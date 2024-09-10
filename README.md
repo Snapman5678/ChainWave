@@ -13,10 +13,10 @@
 
 ### Prerequisites
 
-- [Go](https://golang.org/doc/install) (if using Go for backend)
-- [Python](https://www.python.org/downloads/) (if using Python for backend)
+- [Go](https://golang.org/doc/install) 
+- [Python](https://www.python.org/downloads/) 
 - [PostgreSQL](https://www.postgresql.org/download/) for the database
-- AWS account for deployment (optional)
+- AWS account for deployment 
 
 ### Installation
 
