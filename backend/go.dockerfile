@@ -1,22 +1,17 @@
-# Use Go 1.23 which matches the toolchain directive in go.mod
-FROM golang:1.23-alpine
+# backend/go.dockerfile
+FROM golang:1.21-alpine
 
 WORKDIR /app
 
-# Copy the Go module files
+# Install Air for hot reloading
+RUN go install github.com/cosmtrek/air@v1.44.0
+
 COPY go.mod go.sum ./
-
-# Download and install the dependencies
 RUN go mod download
-
-# Copy the rest of the application code
 COPY . .
 
-# Build the Go app, ensuring to specify the entry point
-RUN go build -o api ./cmd/main.go  # Assuming your main file is here
+# Create tmp directory for air
+RUN mkdir -p tmp
 
-# Expose port 8000 to the outside world
-EXPOSE 8000
-
-# Run the Go app
-CMD ["./api"]
+# Use air for hot reload
+CMD ["air"]
