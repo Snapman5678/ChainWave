@@ -8,65 +8,57 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
-func GetUsers(db *sql.DB, c *gin.Context) {
-	users, err := repository.GetAllUsers(db)
-	if err != nil {
-		log.Print(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
-		return
-	}
-	c.JSON(http.StatusOK, users)
-}
-
-func GetUser(db *sql.DB, c *gin.Context) {
-	id := c.Param("id")
-	user, err := repository.GetUserByID(db, id)
-	if err != nil {
-		log.Print(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
-		return
-	}
-	c.JSON(http.StatusOK, user)
-}
-
-func CreateUser(db *sql.DB, c *gin.Context) {
+// Registration handler
+func RegisterUser(db *sql.DB, c *gin.Context) {
 	var user models.User
 	if err := c.BindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request"})
 		return
 	}
+
+	// Hash the password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Print(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+		return
+	}
+	user.Password = string(hashedPassword)
+
 	if err := repository.CreateUser(db, &user); err != nil {
 		log.Print(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 		return
 	}
-	c.JSON(http.StatusOK, user)
+
+	c.JSON(http.StatusOK, gin.H{"message": "User registered successfully"})
 }
 
-func UpdateUser(db *sql.DB, c *gin.Context) {
-	var user models.User
-	if err := c.BindJSON(&user); err != nil {
+// Login handler
+func LoginUser(db *sql.DB, c *gin.Context) {
+	var loginData struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err := c.BindJSON(&loginData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Bad Request"})
 		return
 	}
 
-	id := c.Param("id")
-	if err := repository.UpdateUser(db, &user, id); err != nil {
-		log.Print(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+	user, err := repository.GetUserByEmail(db, loginData.Email)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 		return
 	}
-	c.JSON(http.StatusOK, user)
-}
 
-func DeleteUser(db *sql.DB, c *gin.Context) {
-	id := c.Param("id")
-	if err := repository.DeleteUser(db, id); err != nil {
-		log.Print(err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+	// Compare hashed passwords
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(loginData.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "User deleted"})
+
+	c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
 }
