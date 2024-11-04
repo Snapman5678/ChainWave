@@ -12,8 +12,8 @@ RUN go mod download
 # Copy the rest of the application code
 COPY . .
 
-# Build the Go app
-RUN go build -o api ./cmd
+# Build the Go app, ensuring to specify the entry point
+RUN go build -o api ./cmd/main.go  # Assuming your main file is here
 
 # Expose port 8000 to the outside world
 EXPOSE 8000
