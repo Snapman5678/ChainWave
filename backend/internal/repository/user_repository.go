@@ -21,3 +21,11 @@ func GetUserByEmail(db *sql.DB, email string) (*models.User, error) {
 	}
 	return &user, nil
 }
+
+// Check if an email already exists in the database
+func IsEmailExists(db *sql.DB, email string) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)`
+	err := db.QueryRow(query, email).Scan(&exists)
+	return exists, err
+}
