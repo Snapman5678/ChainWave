@@ -70,8 +70,7 @@ func LoginUser(db *sql.DB, c *gin.Context) {
         return
     }
 
-    // Here, you can perform additional checks if needed, 
-    // for example checking if the user is active or not.
+    
 
     // Since you have removed hashing, you can directly check if the password matches
     if user.Password != loginData.Password { // Replace with actual password check logic

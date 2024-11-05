@@ -3,7 +3,6 @@ package config
 import (
 	"database/sql"
 	"fmt"
-
 	_ "github.com/lib/pq"
 )
 
@@ -29,6 +28,61 @@ func InitDB(databaseURL string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Create the customer table if it doesn't exist
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS customers (
+		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		customer_name TEXT,
+		contact_info TEXT,
+		location TEXT,
+		user_id UUID,
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	)`)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the business_admin table if it doesn't exist
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS business_admins (
+		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		company_name TEXT,
+		contact_info TEXT,
+		location TEXT,
+		user_id UUID,
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	)`)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the transporter table if it doesn't exist
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS transporters (
+		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		driver_name TEXT,
+		vehicle_details TEXT,
+		contact_info TEXT,
+		location TEXT,
+		user_id UUID,
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	)`)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create the supplier table if it doesn't exist
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS suppliers (
+		id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+		supplier_name TEXT,
+		contact_info TEXT,
+		address TEXT,
+		location TEXT,
+		user_id UUID,
+		FOREIGN KEY (user_id) REFERENCES users(id)
+	)`)
+	if err != nil {
+		return nil, err
+	}
+
 
 	return db, nil
 }
