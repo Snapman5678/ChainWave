@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./styles/globals.css";
@@ -27,8 +28,17 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <header className="bg-gray-800 text-white p-4">
-          <nav className="container mx-auto flex justify-between">
-            <a href="/" className="text-xl font-bold">ChainWave</a>
+          <nav className="container mx-auto flex justify-between items-center">
+            <a href="/" className="flex items-center text-xl font-bold">
+              <Image
+                src="/images/icon.svg" 
+                alt="Icon"
+                width={60} 
+                height={60} 
+                className="mr-2"
+              />&nbsp;
+              ChainWave
+            </a>
             <div>
               <a href="/auth/register" className="mr-4 hover:underline">Register</a>
               <a href="/auth/login" className="hover:underline">Login</a>
