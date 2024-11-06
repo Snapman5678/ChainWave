@@ -178,7 +178,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
       const endpoint =
         mode === "login" ? "/api/user/login" : "/api/user/register";
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
+        `http://localhost:8000${endpoint}`,
         {
           username: formData.username,
           email: formData.email,

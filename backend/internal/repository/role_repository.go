@@ -3,6 +3,7 @@ package repository
 import (
 	"chainwave/backend/internal/models"
 	"database/sql"
+	"github.com/google/uuid"
 )
 
 // AddCustomer adds a new customer to the database
@@ -127,6 +128,26 @@ func EditSupplier(db *sql.DB, supplier models.Supplier) error {
 	_, err := db.Exec(`UPDATE suppliers SET supplier_name = $1, contact_info = $2, address = $3, location = $4 WHERE id = $5`,
 		supplier.SupplierName, supplier.ContactInfo, supplier.Address, supplier.Location, supplier.Id)
 	return err
+}
+
+// GetRolesByUserId fetches roles for a given user ID
+func GetRolesByUserId(db *sql.DB, userId uuid.UUID) ([]models.Role, error) {
+	rows, err := db.Query(`SELECT user_id, customer_id, business_admin_id, transporter_id, supplier_id FROM user_roles WHERE user_id = $1`, userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var roles []models.Role
+	for rows.Next() {
+		var role models.Role
+		if err := rows.Scan(&role.UserId, &role.CustomerId, &role.BusinessAdminId, &role.TransporterId, &role.SupplierId); err != nil {
+			return nil, err
+		}
+		roles = append(roles, role)
+	}
+
+	return roles, nil
 }
 
 

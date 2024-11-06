@@ -83,6 +83,22 @@ func InitDB(databaseURL string) (*sql.DB, error) {
 		return nil, err
 	}
 
+	// Create the user_roles table if it doesn't exist
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS user_roles (
+		user_id UUID NOT NULL,
+		customer_id UUID,
+		business_admin_id UUID,
+		transporter_id UUID,
+		supplier_id UUID,
+		FOREIGN KEY (user_id) REFERENCES users(id),
+		FOREIGN KEY (customer_id) REFERENCES customers(id),
+		FOREIGN KEY (business_admin_id) REFERENCES business_admins(id),
+		FOREIGN KEY (transporter_id) REFERENCES transporters(id),
+		FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+	)`)
+	if err != nil {
+		return nil, err
+	}
 
 	return db, nil
 }
