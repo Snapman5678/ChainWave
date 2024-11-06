@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
 import { Eye, EyeOff } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
 interface AuthFormProps {
   mode: "login" | "register";
@@ -22,13 +23,17 @@ interface PasswordCriterion {
 }
 
 // Add token management utility functions
-const setAuthToken = (token: string) => {
+const setAuthToken = (token: string, userId?: string) => {
   if (token) {
     localStorage.setItem("authToken", token);
+    if (userId) {
+      localStorage.setItem("userId", userId);
+    }
     // Set axios default header for all future requests
     axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
   } else {
     localStorage.removeItem("authToken");
+    localStorage.removeItem("userId");
     delete axios.defaults.headers.common["Authorization"];
   }
 };
@@ -48,6 +53,7 @@ axios.interceptors.request.use(
 );
 
 export default function AuthForm({ mode }: AuthFormProps) {
+  const { setUser } = useAuth();
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: "",
@@ -177,18 +183,22 @@ export default function AuthForm({ mode }: AuthFormProps) {
     try {
       const endpoint =
         mode === "login" ? "/api/user/login" : "/api/user/register";
-      const response = await axios.post(
-        `http://localhost:8000${endpoint}`,
-        {
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-        }
-      );
+      const response = await axios.post(`http://localhost:8000${endpoint}`, {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+      });
 
       // Handle the JWT token from the response
       if (response.data.token) {
-        setAuthToken(response.data.token);
+        const { token, userId, username, email } = response.data;
+
+        setAuthToken(token, userId);
+
+        // Store user info in context and localStorage
+        const userData = { username, email };
+        setUser(userData);
+        localStorage.setItem("user", JSON.stringify(userData));
 
         if (mode === "login") {
           router.push("/dashboard");
