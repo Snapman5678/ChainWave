@@ -22,18 +22,20 @@ interface PasswordCriterion {
   met: boolean;
 }
 
-// Add token management utility functions
-const setAuthToken = (token: string, userId?: string) => {
+const setAuthToken = (token: string, userId?: string, username?: string) => {
   if (token) {
     localStorage.setItem("authToken", token);
     if (userId) {
       localStorage.setItem("userId", userId);
     }
-    // Set axios default header for all future requests
+    if (username) {
+      localStorage.setItem("username", username);
+    }
     axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
   } else {
     localStorage.removeItem("authToken");
     localStorage.removeItem("userId");
+    localStorage.removeItem("username");
     delete axios.defaults.headers.common["Authorization"];
   }
 };
@@ -87,6 +89,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
       },
     ]
   );
+  const [loadingMessage, setLoadingMessage] = useState("");
 
   // Check for existing token on component mount
   useEffect(() => {
@@ -164,6 +167,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setLoadingMessage("");
 
     const isEmailValid = validateEmail(formData.email);
     const isUsernameValid =
@@ -181,6 +185,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
     }
 
     try {
+      setLoadingMessage(
+        mode === "login" ? "Signing in..." : "Creating account..."
+      );
+
       const endpoint =
         mode === "login" ? "/api/user/login" : "/api/user/register";
       const response = await axios.post(`http://localhost:8000${endpoint}`, {
@@ -189,36 +197,39 @@ export default function AuthForm({ mode }: AuthFormProps) {
         password: formData.password,
       });
 
-      // Handle the JWT token from the response
-      if (response.data.token) {
+      console.log("Server response:", response.data); // For debugging
+
+      if (mode === "register") {
+        // Registration successful, navigate to login page
+        setLoadingMessage("Account created successfully!");
+        router.push("/auth/login");
+      } else if (response.data.token) {
+        // Login successful, set auth token and navigate to dashboard
         const { token, userId, username, email } = response.data;
+        setAuthToken(token, userId, username);
 
-        setAuthToken(token, userId);
-
-        // Store user info in context and localStorage
         const userData = { username, email };
         setUser(userData);
         localStorage.setItem("user", JSON.stringify(userData));
 
-        if (mode === "login") {
-          router.push("/dashboard");
-        } else {
-          // For registration, you might want to auto-login or redirect to login
-          router.push("/auth/login");
-        }
+        setLoadingMessage("Login successful!");
+        router.push("/dashboard");
       }
     } catch (err: any) {
+      console.error("Error during submission:", err); // For debugging
+      const errorMessage =
+        err.response?.data?.error || "An error occurred. Please try again.";
       setErrors((prev) => ({
         ...prev,
-        email: err.response?.data?.error || "An error occurred",
+        email: errorMessage,
       }));
-      setAuthToken(""); // Clear any existing token on error
+      setAuthToken("");
+      setLoadingMessage("");
     } finally {
       setLoading(false);
     }
   };
 
-  // Reset password criteria when switching between login and register
   useEffect(() => {
     setPasswordCriteria((prev) =>
       prev.map((criterion) => ({ ...criterion, met: false }))
@@ -355,19 +366,22 @@ export default function AuthForm({ mode }: AuthFormProps) {
           )}
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-            loading ? "opacity-50 cursor-not-allowed" : ""
-          }`}
-        >
-          {loading
-            ? "Processing..."
-            : mode === "login"
-            ? "Sign in"
-            : "Register"}
-        </button>
+        <div>
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
+              loading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
+          >
+            {loadingMessage || (mode === "login" ? "Sign in" : "Register")}
+          </button>
+          {loading && (
+            <div className="mt-4 text-center text-sm text-indigo-600">
+              {loadingMessage}
+            </div>
+          )}
+        </div>
       </form>
     </div>
   );
