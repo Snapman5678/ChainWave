@@ -6,8 +6,8 @@ import (
 	"database/sql"
 	"net/http"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
-
 
 // AddCustomerHandler handles adding a new customer
 func AddCustomerHandler(db *sql.DB, c *gin.Context) {
@@ -16,7 +16,17 @@ func AddCustomerHandler(db *sql.DB, c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := repository.AddCustomer(db, customer); err != nil {
+	userId, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
+		return
+	}
+	uid, err := uuid.Parse(userId.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+	if err := repository.AddCustomer(db, uid, customer); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -44,7 +54,17 @@ func AddBusinessAdminHandler(db *sql.DB, c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := repository.AddBusinessAdmin(db, businessAdmin); err != nil {
+	userId, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
+		return
+	}
+	uid, err := uuid.Parse(userId.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+	if err := repository.AddBusinessAdmin(db, uid, businessAdmin); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -72,7 +92,17 @@ func AddTransporterHandler(db *sql.DB, c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := repository.AddTransporter(db, transporter); err != nil {
+	userId, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
+		return
+	}
+	uid, err := uuid.Parse(userId.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+	if err := repository.AddTransporter(db, uid, transporter); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -100,7 +130,17 @@ func AddSupplierHandler(db *sql.DB, c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := repository.AddSupplier(db, supplier); err != nil {
+	userId, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
+		return
+	}
+	uid, err := uuid.Parse(userId.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+	if err := repository.AddSupplier(db, uid, supplier); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -119,4 +159,24 @@ func EditSupplierHandler(db *sql.DB, c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, supplier)
+}
+
+// GetRolesHandler handles fetching roles for a given user ID
+func GetRolesHandler(db *sql.DB, c *gin.Context) {
+	userId, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in context"})
+		return
+	}
+	uid, err := uuid.Parse(userId.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+	roles, err := repository.GetRolesByUserId(db, uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, roles)
 }

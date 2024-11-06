@@ -4,29 +4,29 @@ import "github.com/google/uuid"
 
 // Customer struct
 type Customer struct {
-	Id          uuid.UUID `json:"id"`
-	CustomerName string   `json:"customer_name"`
-	ContactInfo string   `json:"contact_info"`
-	Location    string   `json:"location"`
-	UserId      uuid.UUID `json:"user_id"`
+	Id           uuid.UUID `json:"id"`
+	CustomerName string    `json:"customer_name"`
+	ContactInfo  string    `json:"contact_info"`
+	LocationId   uuid.UUID `json:"location_id"`
+	UserId       uuid.UUID `json:"user_id"`
 }
 
 // BusinessAdmin struct
 type BusinessAdmin struct {
-	Id             uuid.UUID `json:"id"`
-	CompanyName   string    `json:"company_name"`
-	ContactInfo   string    `json:"contact_info"`
-	Location      string    `json:"location"`
-	UserId        uuid.UUID `json:"user_id"`
+	Id           uuid.UUID `json:"id"`
+	CompanyName  string    `json:"company_name"`
+	ContactInfo  string    `json:"contact_info"`
+	LocationId   uuid.UUID `json:"location_id"`
+	UserId       uuid.UUID `json:"user_id"`
 }
 
 // Transporter struct
 type Transporter struct {
 	Id           uuid.UUID `json:"id"`
 	DriverName   string    `json:"driver_name"`
-	VehicleDetails string   `json:"vehicle_details"`
+	VehicleId    uuid.UUID `json:"vehicle_id"`
 	ContactInfo  string    `json:"contact_info"`
-	Location     string    `json:"location"`
+	LocationId   uuid.UUID `json:"location_id"`
 	UserId       uuid.UUID `json:"user_id"`
 }
 
@@ -36,13 +36,13 @@ type Supplier struct {
 	SupplierName string    `json:"supplier_name"`
 	ContactInfo  string    `json:"contact_info"`
 	Address      string    `json:"address"`
-	Location     string    `json:"location"`
+	LocationId   uuid.UUID `json:"location_id"`
 	UserId       uuid.UUID `json:"user_id"`
 }
 
 // Role struct
 type Role struct {
-	UserId          uuid.UUID `json:"user_id"`
+	UserId          uuid.UUID  `json:"user_id"`
 	CustomerId      *uuid.UUID `json:"customer_id,omitempty"`
 	BusinessAdminId *uuid.UUID `json:"business_admin_id,omitempty"`
 	TransporterId   *uuid.UUID `json:"transporter_id,omitempty"`

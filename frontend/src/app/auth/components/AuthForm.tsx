@@ -190,12 +190,12 @@ export default function AuthForm({ mode }: AuthFormProps) {
       if (response.data.token) {
         setAuthToken(response.data.token);
 
-        if (mode === "login") {
-          router.push("/dashboard");
-        } else {
-          // For registration, you might want to auto-login or redirect to login
-          router.push("/auth/login");
-        }
+        // if (mode === "login") {
+        //   router.push("/dashboard");
+        // } else {
+        //   // For registration, you might want to auto-login or redirect to login
+        //   router.push("/auth/login");
+        // }
       }
     } catch (err: any) {
       setErrors((prev) => ({
