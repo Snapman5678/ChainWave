@@ -39,3 +39,12 @@ type Supplier struct {
 	Location     string    `json:"location"`
 	UserId       uuid.UUID `json:"user_id"`
 }
+
+// Role struct
+type Role struct {
+	UserId          uuid.UUID `json:"user_id"`
+	CustomerId      *uuid.UUID `json:"customer_id,omitempty"`
+	BusinessAdminId *uuid.UUID `json:"business_admin_id,omitempty"`
+	TransporterId   *uuid.UUID `json:"transporter_id,omitempty"`
+	SupplierId      *uuid.UUID `json:"supplier_id,omitempty"`
+}

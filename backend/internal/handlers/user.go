@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gin-gonic/gin"
 	// "golang.org/x/crypto/bcrypt"
 )
@@ -46,7 +47,7 @@ func RegisterUser(db *sql.DB, c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "User registered successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "User registered successfully", "user_id": user.Id})
 }
 
 // Login handler
@@ -70,8 +71,6 @@ func LoginUser(db *sql.DB, c *gin.Context) {
         return
     }
 
-    
-
     // Since you have removed hashing, you can directly check if the password matches
     if user.Password != loginData.Password { // Replace with actual password check logic
         c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
@@ -79,5 +78,14 @@ func LoginUser(db *sql.DB, c *gin.Context) {
     }
 
     // If login is successful
-    c.JSON(http.StatusOK, gin.H{"message": "Login successful"})
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+        "user_id": user.Id,
+    })
+    tokenString, err := token.SignedString([]byte("your_secret_key"))
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"message": "Login successful", "token": tokenString, "user_id": user.Id})
 }
