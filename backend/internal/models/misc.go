@@ -9,7 +9,8 @@ type Vehicle struct {
 	Make            string    `json:"make"`
 	Model           string    `json:"model"`
 	Year            int       `json:"year"`
-	Location        Location  `json:"location"`
+	Latitude        float64   `json:"latitude"`
+	Longitude       float64   `json:"longitude"`
 	MaxDistance     float64   `json:"max_distance"`
 	MaxCapacity     float64   `json:"max_capacity"`
 	CurrentCapacity float64   `json:"current_capacity"`

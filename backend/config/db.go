@@ -9,7 +9,7 @@ import (
 // InitDB initializes the database connection and creates the users table if it doesn't exist.
 func InitDB(databaseURL string) (*sql.DB, error) {
 	db, err := sql.Open("postgres", databaseURL)
-	if err != nil {
+	if (err != nil) {
 		return nil, err
 	}
 
@@ -74,24 +74,68 @@ func InitDB(databaseURL string) (*sql.DB, error) {
 		return nil, err
 	}
 
-	// Alter the vehicles table to add foreign key constraints
-	_, err = db.Exec(`ALTER TABLE vehicles
-		ADD CONSTRAINT fk_transporter
-		FOREIGN KEY (transporter_id) REFERENCES transporters(id)
-	`)
+	// Alter the vehicles table to add foreign key constraints if they don't exist
+	_, err = db.Exec(`DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_name = 'fk_transporter'
+    ) THEN
+        ALTER TABLE vehicles
+        ADD CONSTRAINT fk_transporter
+        FOREIGN KEY (transporter_id) REFERENCES transporters(id);
+    END IF;
+END $$;`)
 	if err != nil {
 		return nil, err
 	}
 
-	// Alter the transporters table to add foreign key constraints
-	_, err = db.Exec(`ALTER TABLE transporters
-		ADD CONSTRAINT fk_user
-		FOREIGN KEY (user_id) REFERENCES users(id),
-		ADD CONSTRAINT fk_vehicle
-		FOREIGN KEY (vehicle_id) REFERENCES vehicles(id),
-		ADD CONSTRAINT fk_location
-		FOREIGN KEY (location_id) REFERENCES locations(id)
-	`)
+	// Alter the transporters table to add foreign key constraints if they don't exist
+	_, err = db.Exec(`DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_name = 'fk_user'
+    ) THEN
+        ALTER TABLE transporters
+        ADD CONSTRAINT fk_user
+        FOREIGN KEY (user_id) REFERENCES users(id);
+    END IF;
+END $$;`)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = db.Exec(`DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_name = 'fk_vehicle'
+    ) THEN
+        ALTER TABLE transporters
+        ADD CONSTRAINT fk_vehicle
+        FOREIGN KEY (vehicle_id) REFERENCES vehicles(id);
+    END IF;
+END $$;`)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = db.Exec(`DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM information_schema.table_constraints
+        WHERE constraint_name = 'fk_location'
+    ) THEN
+        ALTER TABLE transporters
+        ADD CONSTRAINT fk_location
+        FOREIGN KEY (location_id) REFERENCES locations(id);
+    END IF;
+END $$;`)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +185,7 @@ func InitDB(databaseURL string) (*sql.DB, error) {
 
 	// Create the user_roles table if it doesn't exist
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS user_roles (
-		user_id UUID NOT NULL,
+		user_id UUID NOT NULL PRIMARY KEY,
 		customer_id UUID,
 		business_admin_id UUID,
 		transporter_id UUID,
@@ -152,6 +196,45 @@ func InitDB(databaseURL string) (*sql.DB, error) {
 		FOREIGN KEY (transporter_id) REFERENCES transporters(id),
 		FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
 	)`)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS items (
+		id UUID PRIMARY KEY,
+		business_admin_id UUID,
+		name TEXT NOT NULL,
+		description TEXT,
+		price DOUBLE PRECISION NOT NULL,
+		weight DOUBLE PRECISION NOT NULL,
+		dimensions TEXT,
+		category TEXT NOT NULL,
+		quantity INTEGER NOT NULL,
+		image_url TEXT,
+		FOREIGN KEY (business_admin_id) REFERENCES business_admins(id)
+	)`)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create or replace the PostgreSQL function for upserting user roles
+	_, err = db.Exec(`CREATE OR REPLACE FUNCTION upsert_user_role(
+		p_user_id UUID,
+		p_customer_id UUID,
+		p_business_admin_id UUID,
+		p_transporter_id UUID,
+		p_supplier_id UUID
+	) RETURNS VOID AS $$
+	BEGIN
+		INSERT INTO user_roles (user_id, customer_id, business_admin_id, transporter_id, supplier_id)
+		VALUES (p_user_id, p_customer_id, p_business_admin_id, p_transporter_id, p_supplier_id)
+		ON CONFLICT (user_id) DO UPDATE SET
+			customer_id = COALESCE(user_roles.customer_id, EXCLUDED.customer_id),
+			business_admin_id = COALESCE(user_roles.business_admin_id, EXCLUDED.business_admin_id),
+			transporter_id = COALESCE(user_roles.transporter_id, EXCLUDED.transporter_id),
+			supplier_id = COALESCE(user_roles.supplier_id, EXCLUDED.supplier_id);
+	END;
+	$$ LANGUAGE plpgsql;`)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +257,7 @@ func ensureUUIDExtension(db *sql.DB) error {
 	}
 
 	// Create the extension only if it does not exist
-	if !exists {
+	if (!exists) {
 		_, err := db.Exec(`CREATE EXTENSION "uuid-ossp";`)
 		if err != nil {
 			return fmt.Errorf("failed to create uuid-ossp extension: %w", err)
