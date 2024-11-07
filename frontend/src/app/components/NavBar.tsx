@@ -4,12 +4,17 @@ import Image from "next/image";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
+import { ShoppingCart } from "lucide-react";
+import Link from "next/link";
 
 export default function NavBar() {
   const { isAuthenticated, user, logout } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { items } = useCart();
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -44,7 +49,17 @@ export default function NavBar() {
       </a>
       <div>
         {isAuthenticated && user ? (
-          <div className="relative flex items-center" ref={dropdownRef}>
+          <div className="relative flex items-center gap-4" ref={dropdownRef}>
+            <Link href="/cart" className="flex items-center text-white">
+              <div className="relative">
+                <ShoppingCart className="w-6 h-6" />
+                {totalItems > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {totalItems}
+                  </span>
+                )}
+              </div>
+            </Link>
             <span className="text-white mr-2">{user.username}</span>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
