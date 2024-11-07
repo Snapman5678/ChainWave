@@ -1,12 +1,20 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
+import axios from "axios";
+
+interface User {
+  username: string;
+  email: string;
+  roles?: string[];
+}
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: { username: string; email: string } | null;
-  setUser: (user: { username: string; email: string } | null) => void;
+  user: User | null;
+  setUser: (user: User | null) => void;
   logout: () => void;
+  updateUserRoles: (roles: string[]) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -14,12 +22,11 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   setUser: () => {},
   logout: () => {},
+  updateUserRoles: async () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<{ username: string; email: string } | null>(
-    null
-  );
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     // Check localStorage for user data on mount
@@ -35,6 +42,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("authToken");
   };
 
+  const updateUserRoles = async (roles: string[]) => {
+    try {
+      const response = await axios.post('http://localhost:8000/api/user/roles', { roles });
+      if (response.data.success) {
+        setUser(prev => ({ ...prev!, roles }));
+        localStorage.setItem('user', JSON.stringify({ ...user, roles }));
+      }
+    } catch (error) {
+      console.error('Error updating roles:', error);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -42,6 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         setUser,
         logout,
+        updateUserRoles,
       }}
     >
       {children}

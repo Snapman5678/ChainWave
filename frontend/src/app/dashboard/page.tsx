@@ -12,8 +12,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Package, TrendingUp, Truck, Factory, Search } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import RoleSelectionForm from "../components/RoleSelectionForm";
 
 export default function DashboardPage() {
+  const { user, updateUserRoles } = useAuth();
   const [userType, setUserType] = useState("customer");
   const [orderId, setOrderId] = useState("");
   // uncomment later const [orders, setOrders] = useState([
@@ -31,6 +34,16 @@ export default function DashboardPage() {
       details: "Raw Materials",
     },
   ]);
+
+  if (!user?.roles || user.roles.length === 0) {
+    return (
+      <RoleSelectionForm 
+        onSubmit={async (roles) => {
+          await updateUserRoles(roles);
+        }} 
+      />
+    );
+  }
 
   const renderCustomerDashboard = () => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
