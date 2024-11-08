@@ -51,6 +51,11 @@ func main() {
 	authRoutes.PUT("/supplier/:id", func(c *gin.Context) { handlers.EditSupplierHandler(db, c) })
 	authRoutes.GET("/role", func(c *gin.Context) { handlers.GetRolesHandler(db, c) })
 
+	// Routes to update email,username and password for a user
+	authRoutes.PUT("/user/email", func(c *gin.Context) { handlers.UpdateEmailHandler(db, c) })
+	authRoutes.PUT("/user/username", func(c *gin.Context) { handlers.UpdateUsernameHandler(db, c) })
+	authRoutes.PUT("/user/password", func(c *gin.Context) { handlers.UpdatePasswordHandler(db, c) })
+
     // Authenticated routes for roles and puts role ids in the context
 	authRoleRoutes := router.Group("/api/roles")
 	authRoleRoutes.Use(middleware.AuthAdminMiddleware("your_secret_key", db)) // Replace with your actual secret key
