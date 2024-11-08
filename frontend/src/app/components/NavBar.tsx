@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Store } from "lucide-react";
 import Link from "next/link";
 
 export default function NavBar() {
@@ -47,9 +47,15 @@ export default function NavBar() {
         />
         &nbsp; ChainWave
       </a>
-      <div>
+      <div className="flex items-center space-x-6">
+        <Link 
+          href="/marketplace" 
+          className="flex items-center text-white hover:text-gray-300 transition-colors"
+        >
+          <Store className="w-6 h-6" />
+        </Link>
         {isAuthenticated && user ? (
-          <div className="relative flex items-center gap-4" ref={dropdownRef}>
+          <div className="relative flex items-center space-x-6" ref={dropdownRef}>
             <Link href="/cart" className="flex items-center text-white">
               <div className="relative">
                 <ShoppingCart className="w-6 h-6" />
@@ -60,11 +66,11 @@ export default function NavBar() {
                 )}
               </div>
             </Link>
-            <span className="text-white mr-2">{user.username}</span>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center text-white hover:text-gray-300"
+              className="flex items-center space-x-1 text-white hover:text-gray-300"
             >
+              <span className="text-lg">{user.username}</span>
               <svg
                 className="w-4 h-4"
                 fill="none"
@@ -111,14 +117,20 @@ export default function NavBar() {
             )}
           </div>
         ) : (
-          <>
-            <a href="/auth/register" className="mr-4 hover:underline">
+          <div className="flex items-center space-x-6">
+            <button 
+              onClick={() => router.push('/auth/register')} 
+              className="px-6 py-2 rounded-md border border-white/20 text-white hover:bg-white/10 transition-colors"
+            >
               Register
-            </a>
-            <a href="/auth/login" className="hover:underline">
+            </button>
+            <button 
+              onClick={() => router.push('/auth/login')} 
+              className="px-6 py-2 rounded-md border border-white/20 text-white hover:bg-white/10 transition-colors"
+            >
               Login
-            </a>
-          </>
+            </button>
+          </div>
         )}
       </div>
     </nav>

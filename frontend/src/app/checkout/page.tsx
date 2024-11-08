@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 
 // Add Product interface
 interface Product {
@@ -30,6 +31,12 @@ interface DirectPurchase {
   isDirectPurchase: boolean;
 }
 
+interface RazorpayResponse {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
 export default function CheckoutPage() {
   const { items, total, clearCart } = useCart();
   const { user } = useAuth();
@@ -44,6 +51,13 @@ export default function CheckoutPage() {
     state: "",
     zipCode: "",
   });
+
+  useEffect(() => {
+    if (!user) {
+      router.push("/auth/login");
+      return;
+    }
+  }, [user, router]);
 
   useEffect(() => {
     // Load Razorpay SDK
@@ -69,45 +83,83 @@ export default function CheckoutPage() {
     }
   }, [items, total]);
 
+  if (!user) {
+    return null; // or return a loading spinner
+  }
+
   const handlePayment = async () => {
     if (!checkoutItems.length) {
-      alert("No items to checkout");
+      toast.error("No items to checkout");
       return;
     }
 
     if (!address.street || !address.city || !address.state || !address.zipCode) {
-      alert("Please fill in all address fields");
+      toast.error("Please fill in all address fields");
       return;
     }
 
     setLoading(true);
     try {
-      // TODO: Replace with your actual API call to create order
-      const orderData = {
-        amount: checkoutTotal * 100, // Razorpay expects amount in paise
-        currency: "INR",
-        receipt: "order_" + Math.random().toString(36).substr(2, 9),
-      };
+      // Create order in backend
+      const response = await fetch('/api/orders/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.token}`
+        },
+        body: JSON.stringify({
+          items: checkoutItems,
+          address,
+          amount: checkoutTotal
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create order');
+      }
+
+      const orderData = await response.json();
 
       // Initialize Razorpay options
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Your Razorpay Key ID
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.amount,
         currency: orderData.currency,
+        order_id: orderData.id,
         name: "ChainWave",
         description: "Purchase from ChainWave",
-        order_id: orderData.receipt,
-        handler: function (response: any) {
-          // Handle successful payment
-          console.log(response);
-          if (!isDirectPurchase) {
-            clearCart();
+        handler: async function (response: RazorpayResponse) {
+          try {
+            // Verify payment with backend
+            const verifyResponse = await fetch('/api/orders/verify', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${user?.token}`
+              },
+              body: JSON.stringify({
+                orderId: orderData.id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature
+              })
+            });
+
+            if (!verifyResponse.ok) {
+              throw new Error('Payment verification failed');
+            }
+
+            if (!isDirectPurchase) {
+              clearCart();
+            }
+            toast.success("Payment successful!");
+            router.push("/marketplace");
+          } catch (error) {
+            toast.error("Payment verification failed");
+            console.error(error);
           }
-          alert("Payment successful!");
-          router.push("/marketplace"); // Redirect to marketplace after successful payment
         },
         prefill: {
-          name: user?.username,
+          name: user?.username, 
           email: user?.email,
         },
         theme: {
@@ -119,7 +171,7 @@ export default function CheckoutPage() {
       razorpay.open();
     } catch (error) {
       console.error("Payment failed:", error);
-      alert("Payment failed. Please try again.");
+      toast.error("Payment failed. Please try again.");
     } finally {
       setLoading(false);
     }

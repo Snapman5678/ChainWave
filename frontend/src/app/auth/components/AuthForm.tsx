@@ -22,6 +22,14 @@ interface PasswordCriterion {
   met: boolean;
 }
 
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  token: string;
+  roles: string[];
+}
+
 const setAuthToken = (token: string, userId?: string, username?: string) => {
   if (token) {
     localStorage.setItem("authToken", token);
@@ -55,6 +63,7 @@ axios.interceptors.request.use(
 );
 
 export default function AuthForm({ mode }: AuthFormProps) {
+  const { user } = useAuth();
   const { setUser } = useAuth();
   const router = useRouter();
   const [formData, setFormData] = useState({
@@ -93,11 +102,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
   // Check for existing token on component mount
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (token) {
+    if (user) {
       router.push("/dashboard");
     }
-  }, [router]);
+  }, [user, router]);
 
   const usernameRegex = /^(?![0-9])[A-Za-z0-9_]+$/;
 
@@ -208,7 +216,13 @@ export default function AuthForm({ mode }: AuthFormProps) {
         const { token, userId, username, email } = response.data;
         setAuthToken(token, userId, username);
 
-        const userData = { username, email };
+        const userData: User = {
+          id: userId, // from response.data
+          username,
+          email,
+          token,
+          roles: response.data.roles || [] // Add roles from response or default to empty array
+        };
         setUser(userData);
         localStorage.setItem("user", JSON.stringify(userData));
 

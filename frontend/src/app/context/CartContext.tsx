@@ -51,7 +51,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems((current) => {
       const exists = current.find((item) => item.id === product.id);
       if (exists) {
-        // Check if new total quantity exceeds available stock
         const newQuantity = exists.quantity + quantity;
         if (newQuantity > product.quantity) {
           alert(`Cannot add more items. Only ${product.quantity} units available in stock.`);
@@ -63,12 +62,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             : item
         );
       }
-      // Check if initial quantity exceeds available stock
+      
       if (quantity > product.quantity) {
         alert(`Cannot add ${quantity} items. Only ${product.quantity} units available in stock.`);
         return current;
       }
-      return [...current, { ...product, quantity }];
+      // Store the original product quantity as availableStock
+      return [...current, { ...product, quantity, availableStock: product.quantity }];
     });
   };
 
@@ -83,18 +83,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
     
     setItems((current) => {
-      const item = current.find((i) => i.id === productId);
-      if (!item) return current;
-      
-      // Check if new quantity exceeds available stock
-      if (quantity > item.quantity) {
-        alert(`Cannot add more items. Only ${item.quantity} units available in stock.`);
-        return current;
-      }
-      
-      return current.map((item) =>
-        item.id === productId ? { ...item, quantity } : item
-      );
+      return current.map((item) => {
+        if (item.id === productId) {
+          // Compare against the original product quantity
+          if (quantity > item.quantity) {
+            alert(`Cannot add more items. Only ${item.quantity} units available in stock.`);
+            return item;
+          }
+          return { ...item, quantity };
+        }
+        return item;
+      });
     });
   };
 
