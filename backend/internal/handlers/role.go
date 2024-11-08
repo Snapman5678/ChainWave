@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // AddCustomerHandler handles adding a new customer
@@ -35,13 +36,20 @@ func AddCustomerHandler(db *sql.DB, c *gin.Context) {
 		return
 	}
 
+	// Check if customer already exists
+	exists, err = repository.CustomerExists(db, uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if exists {
+		c.JSON(http.StatusConflict, gin.H{"error": "Customer already exists"})
+		return
+	}
+
 	// Add the customer and location
 	customerID, locationID, err := repository.AddCustomer(db, uid, request.Customer, request.Location)
 	if err != nil {
-		if customerID != uuid.Nil && locationID == uuid.Nil {
-			c.JSON(http.StatusConflict, gin.H{"error": "Customer already exists"})
-			return
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -89,12 +97,20 @@ func AddBusinessAdminHandler(db *sql.DB, c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
+
+	// Check if business admin already exists
+	exists, err = repository.BusinessAdminExists(db, uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if exists {
+		c.JSON(http.StatusConflict, gin.H{"error": "Business Admin already exists"})
+		return
+	}
+
 	businessAdminID, locationID, err := repository.AddBusinessAdmin(db, uid, request.BusinessAdmin, request.Location)
 	if err != nil {
-		if businessAdminID != uuid.Nil && locationID == uuid.Nil {
-			c.JSON(http.StatusConflict, gin.H{"error": "Business Admin already exists"})
-			return
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -142,12 +158,20 @@ func AddTransporterHandler(db *sql.DB, c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
+
+	// Check if transporter already exists
+	exists, err = repository.TransporterExists(db, uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if exists {
+		c.JSON(http.StatusConflict, gin.H{"error": "Transporter already exists"})
+		return
+	}
+
 	transporterID, locationID, vehicleID, err := repository.AddTransporter(db, uid, request.Transporter, request.Location, request.Vehicle)
 	if err != nil {
-		if transporterID != uuid.Nil && locationID == uuid.Nil && vehicleID == uuid.Nil {
-			c.JSON(http.StatusConflict, gin.H{"error": "Transporter already exists"})
-			return
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -195,12 +219,20 @@ func AddSupplierHandler(db *sql.DB, c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
+
+	// Check if supplier already exists
+	exists, err = repository.SupplierExists(db, uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if exists {
+		c.JSON(http.StatusConflict, gin.H{"error": "Supplier already exists"})
+		return
+	}
+
 	supplierID, locationID, err := repository.AddSupplier(db, uid, request.Supplier, request.Location)
 	if err != nil {
-		if supplierID != uuid.Nil && locationID == uuid.Nil {
-			c.JSON(http.StatusConflict, gin.H{"error": "Supplier already exists"})
-			return
-		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -244,5 +276,86 @@ func GetRolesHandler(db *sql.DB, c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, roles)
+
+	// here 
+	type RoleResponse struct {
+        RoleType string    `json:"role_type"`
+        RoleID   uuid.UUID `json:"role_id"`
+    }
+
+    // Extract roles with their types
+    roleResponses := make([]RoleResponse, 0)
+    roleIDs := make([]string, 0)  // Changed to dynamic slice
+
+    for _, role := range roles {
+        if role.CustomerId != nil {
+            roleResponses = append(roleResponses, RoleResponse{
+                RoleType: "customer",
+                RoleID:   *role.CustomerId,
+            })
+            roleIDs = append(roleIDs, role.CustomerId.String())
+        }
+        if role.BusinessAdminId != nil {
+            roleResponses = append(roleResponses, RoleResponse{
+                RoleType: "business_admin",
+                RoleID:   *role.BusinessAdminId,
+            })
+            roleIDs = append(roleIDs, role.BusinessAdminId.String())
+        }
+        if role.TransporterId != nil {
+            roleResponses = append(roleResponses, RoleResponse{
+                RoleType: "transporter",
+                RoleID:   *role.TransporterId,
+            })
+            roleIDs = append(roleIDs, role.TransporterId.String())
+        }
+        if role.SupplierId != nil {
+            roleResponses = append(roleResponses, RoleResponse{
+                RoleType: "supplier",
+                RoleID:   *role.SupplierId,
+            })
+            roleIDs = append(roleIDs, role.SupplierId.String())
+        }
+    }
+
+
+	// Create a new JWT token with role IDs
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+        "user_id": userId,
+        "roles":   roleIDs,
+        "roleTypes": getRoleTypes(roles),  
+    })
+
+	// Sign the token with a secret key
+	tokenString, err := token.SignedString([]byte("your_secret_key"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to sign token"})
+		return
+	}
+
+		
+	c.JSON(http.StatusOK, gin.H{
+		"roles": roles,
+		"token": tokenString,
+	})
+}
+
+// Helper function to get role types
+func getRoleTypes(roles []models.Role) []string {
+    roleTypes := make([]string, 0)
+    for _, role := range roles {
+        if role.CustomerId != nil {
+            roleTypes = append(roleTypes, "customer")
+        }
+        if role.BusinessAdminId != nil {
+            roleTypes = append(roleTypes, "business_admin")
+        }
+        if role.TransporterId != nil {
+            roleTypes = append(roleTypes, "transporter")
+        }
+        if role.SupplierId != nil {
+            roleTypes = append(roleTypes, "supplier")
+        }
+    }
+    return roleTypes
 }

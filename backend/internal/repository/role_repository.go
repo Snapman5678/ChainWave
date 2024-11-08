@@ -3,18 +3,27 @@ package repository
 import (
 	"chainwave/backend/internal/models"
 	"database/sql"
+	"errors"
 	"github.com/google/uuid"
 )
 
-// AddCustomer adds a new customer to the database
-func AddCustomer(db *sql.DB, userId uuid.UUID, customer models.Customer, location models.Location) (uuid.UUID, uuid.UUID, error) {
-	// Check if user ID already exists in customers table
+var ErrRoleAlreadyExists = errors.New("role already exists")
+
+// Check if customer already exists
+func CustomerExists(db *sql.DB, userId uuid.UUID) (bool, error) {
 	var existingCustomerID uuid.UUID
 	err := db.QueryRow(`SELECT id FROM customers WHERE user_id = $1`, userId).Scan(&existingCustomerID)
-	if err == nil {
-		return existingCustomerID, uuid.Nil, nil
+	if err == sql.ErrNoRows {
+		return false, nil
 	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
 
+// AddCustomer adds a new customer to the database
+func AddCustomer(db *sql.DB, userId uuid.UUID, customer models.Customer, location models.Location) (uuid.UUID, uuid.UUID, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return uuid.Nil, uuid.Nil, err
@@ -53,15 +62,21 @@ func EditCustomer(db *sql.DB, customer models.Customer) error {
 	return err
 }
 
-// AddBusinessAdmin adds a new business admin to the database
-func AddBusinessAdmin(db *sql.DB, userId uuid.UUID, businessAdmin models.BusinessAdmin, location models.Location) (uuid.UUID, uuid.UUID, error) {
-	// Check if user ID already exists in business_admins table
+// Check if business admin already exists
+func BusinessAdminExists(db *sql.DB, userId uuid.UUID) (bool, error) {
 	var existingBusinessAdminID uuid.UUID
 	err := db.QueryRow(`SELECT id FROM business_admins WHERE user_id = $1`, userId).Scan(&existingBusinessAdminID)
-	if err == nil {
-		return existingBusinessAdminID, uuid.Nil, nil
+	if err == sql.ErrNoRows {
+		return false, nil
 	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
 
+// AddBusinessAdmin adds a new business admin to the database
+func AddBusinessAdmin(db *sql.DB, userId uuid.UUID, businessAdmin models.BusinessAdmin, location models.Location) (uuid.UUID, uuid.UUID, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return uuid.Nil, uuid.Nil, err
@@ -100,15 +115,21 @@ func EditBusinessAdmin(db *sql.DB, businessAdmin models.BusinessAdmin) error {
 	return err
 }
 
-// AddTransporter adds a new transporter to the database
-func AddTransporter(db *sql.DB, userId uuid.UUID, transporter models.Transporter, location models.Location, vehicle models.Vehicle) (uuid.UUID, uuid.UUID, uuid.UUID, error) {
-	// Check if user ID already exists in transporters table
+// Check if transporter already exists
+func TransporterExists(db *sql.DB, userId uuid.UUID) (bool, error) {
 	var existingTransporterID uuid.UUID
 	err := db.QueryRow(`SELECT id FROM transporters WHERE user_id = $1`, userId).Scan(&existingTransporterID)
-	if err == nil {
-		return existingTransporterID, uuid.Nil, uuid.Nil, nil
+	if err == sql.ErrNoRows {
+		return false, nil
 	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
 
+// AddTransporter adds a new transporter to the database
+func AddTransporter(db *sql.DB, userId uuid.UUID, transporter models.Transporter, location models.Location, vehicle models.Vehicle) (uuid.UUID, uuid.UUID, uuid.UUID, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return uuid.Nil, uuid.Nil, uuid.Nil, err
@@ -155,15 +176,21 @@ func EditTransporter(db *sql.DB, transporter models.Transporter) error {
 	return err
 }
 
-// AddSupplier adds a new supplier to the database
-func AddSupplier(db *sql.DB, userId uuid.UUID, supplier models.Supplier, location models.Location) (uuid.UUID, uuid.UUID, error) {
-	// Check if user ID already exists in suppliers table
+// Check if supplier already exists
+func SupplierExists(db *sql.DB, userId uuid.UUID) (bool, error) {
 	var existingSupplierID uuid.UUID
 	err := db.QueryRow(`SELECT id FROM suppliers WHERE user_id = $1`, userId).Scan(&existingSupplierID)
-	if err == nil {
-		return existingSupplierID, uuid.Nil, nil
+	if err == sql.ErrNoRows {
+		return false, nil
 	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
 
+// AddSupplier adds a new supplier to the database
+func AddSupplier(db *sql.DB, userId uuid.UUID, supplier models.Supplier, location models.Location) (uuid.UUID, uuid.UUID, error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return uuid.Nil, uuid.Nil, err

@@ -5,17 +5,73 @@ import (
 	"chainwave/backend/internal/repository"
 	"database/sql"
 	"net/http"
+	"path/filepath"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"log"
 )
 
 // AddItemHandler handles adding a new item
 func AddItemHandler(db *sql.DB, c *gin.Context) {
 	var item models.Item
-	if err := c.ShouldBindJSON(&item); err != nil {
+
+	// Bind the multipart form data to the item struct
+	if err := c.ShouldBind(&item); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Get roles and role types from the context
+	roles, rolesExists := c.Get("roles")
+	roleTypes, roleTypesExists := c.Get("roleTypes")
+	if !rolesExists || !roleTypesExists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	rolesSlice := roles.([]string)
+	roleTypesSlice := roleTypes.([]string)
+	if len(rolesSlice) != len(roleTypesSlice) || len(rolesSlice) == 0 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	// Ensure the business admin ID exists in the roles
+	var businessAdminId uuid.UUID
+	for i, roleType := range roleTypesSlice {
+		if roleType == "business_admin" {
+			businessAdminId = uuid.MustParse(rolesSlice[i])
+			break
+		}
+	}
+
+	if businessAdminId == uuid.Nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	item.BusinessAdminId = businessAdminId
+
+	// Handle image upload
+	file, err := c.FormFile("image")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Image upload failed"})
+		return
+	}
+
+	// Save the image to the static/images directory
+	imagePath := filepath.Join("backend/static/images", file.Filename)
+	if err := c.SaveUploadedFile(file, imagePath); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image"})
+		return
+	}
+	//log.Println("Image saved to: ", imagePath
+
+	log.Print("Image saved to: ", imagePath)
+
+	// Set the image URL in the item
+	item.ImageURL = "/images/" + file.Filename
+
 	if err := repository.AddItem(db, item); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

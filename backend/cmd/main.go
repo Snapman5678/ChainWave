@@ -49,13 +49,16 @@ func main() {
 	authRoutes.PUT("/transporter/:id", func(c *gin.Context) { handlers.EditTransporterHandler(db, c) })
 	authRoutes.POST("/supplier", func(c *gin.Context) { handlers.AddSupplierHandler(db, c) })
 	authRoutes.PUT("/supplier/:id", func(c *gin.Context) { handlers.EditSupplierHandler(db, c) })
-	authRoutes.GET("/roles", func(c *gin.Context) { handlers.GetRolesHandler(db, c) })
-
+	authRoutes.GET("/role", func(c *gin.Context) { handlers.GetRolesHandler(db, c) })
 
     // Authenticated routes for roles and puts role ids in the context
 	authRoleRoutes := router.Group("/api/roles")
-	authRoleRoutes.Use(middleware.AuthAdminMiddleware("your_secret_key",db)) // Replace with your actual secret key
+	authRoleRoutes.Use(middleware.AuthAdminMiddleware("your_secret_key", db)) // Replace with your actual secret key
 
+	// Item-related routes
+	itemRoutes := authRoleRoutes.Group("/item")
+	itemRoutes.Use(middleware.FormContentTypeMiddleware())
+	itemRoutes.POST("/", func(c *gin.Context) { handlers.AddItemHandler(db, c) })
 
 	// Start the server
 	log.Fatal(router.Run(":8000"))

@@ -8,8 +8,8 @@ import (
 
 // AddItem adds a new item to the database
 func AddItem(db *sql.DB, item models.Item) error {
-	_, err := db.Exec(`INSERT INTO items (id, name, description, price, weight, dimensions, category, quantity, image_url) VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, $6, $7, $8)`,
-		item.Name, item.Description, item.Price, item.Weight, item.Dimensions, item.Category, item.Quantity, item.ImageURL)
+	_, err := db.Exec(`INSERT INTO items (id, business_admin_id, name, description, price, weight, dimensions, category, quantity, image_url) VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+		item.BusinessAdminId, item.Name, item.Description, item.Price, item.Weight, item.Dimensions, item.Category, item.Quantity, item.ImageURL)
 	return err
 }
 

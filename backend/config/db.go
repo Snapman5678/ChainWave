@@ -68,7 +68,7 @@ func InitDB(databaseURL string) (*sql.DB, error) {
 		vehicle_id UUID,
 		contact_info TEXT,
 		location_id UUID,
-		user_id UUID
+		user_id UUID UNIQUE
 	)`)
 	if err != nil {
 		return nil, err
@@ -146,7 +146,7 @@ END $$;`)
 		customer_name TEXT,
 		contact_info TEXT,
 		location_id UUID,
-		user_id UUID,
+		user_id UUID UNIQUE,
 		FOREIGN KEY (user_id) REFERENCES users(id),
 		FOREIGN KEY (location_id) REFERENCES locations(id)
 	)`)
@@ -160,7 +160,7 @@ END $$;`)
 		company_name TEXT,
 		contact_info TEXT,
 		location_id UUID,
-		user_id UUID,
+		user_id UUID UNIQUE,
 		FOREIGN KEY (user_id) REFERENCES users(id),
 		FOREIGN KEY (location_id) REFERENCES locations(id)
 	)`)
@@ -175,7 +175,7 @@ END $$;`)
 		contact_info TEXT,
 		address TEXT,
 		location_id UUID,
-		user_id UUID,
+		user_id UUID UNIQUE,
 		FOREIGN KEY (user_id) REFERENCES users(id),
 		FOREIGN KEY (location_id) REFERENCES locations(id)
 	)`)

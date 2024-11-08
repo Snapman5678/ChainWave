@@ -7,8 +7,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gin-gonic/gin"
 	"database/sql"
-	"github.com/google/uuid"
-	"chainwave/backend/internal/repository"
 )
 
 // CORSMiddleware sets the Access-Control-Allow-Origin header to allow CORS requests.
@@ -32,6 +30,7 @@ func JSONContentTypeMiddleware() gin.HandlerFunc {
 		c.Next()
 	}
 }
+
 
 // AuthMiddleware extracts the user ID from the JWT token and sets it in the context.
 func AuthMiddleware(secretKey string) gin.HandlerFunc {
@@ -90,40 +89,50 @@ func AuthAdminMiddleware(secretKey string, db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Extract user ID from token claims
-		var userID string
+		// Extract user ID, roles, and role types from token claims
 		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			userID, ok = claims["user_id"].(string)
+			userID, ok := claims["user_id"].(string)
 			if !ok {
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
 				c.Abort()
 				return
 			}
+			c.Set("userID", userID)
+
+			// Extract roles from token claims
+			roles, ok := claims["roles"].([]interface{})
+			if ok {
+				roleIDs := make([]string, len(roles))
+				for i, role := range roles {
+					roleIDs[i] = role.(string)
+				}
+				c.Set("roles", roleIDs)
+			}
+
+			// Extract role types from token claims
+			roleTypes, ok := claims["roleTypes"].([]interface{})
+			if ok {
+				roleTypeStrings := make([]string, len(roleTypes))
+				for i, roleType := range roleTypes {
+					roleTypeStrings[i] = roleType.(string)
+				}
+				c.Set("roleTypes", roleTypeStrings)
+			}
+
 		} else {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			c.Abort()
 			return
 		}
 
-		// Fetch roles from the database using the user ID
-		userUUID, err := uuid.Parse(userID)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID format"})
-			c.Abort()
-			return
-		}
+		c.Next()
+	}
+}
 
-		roles, err := repository.GetRolesByUserId(db, userUUID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch roles"})
-			c.Abort()
-			return
-		}
-
-		// Set user ID and roles in the context
-		c.Set("userID", userID)
-		c.Set("roles", roles) // roles is a slice of Role structs
-
+// FormContentTypeMiddleware sets the Content-Type header to multipart/form-data
+func FormContentTypeMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Content-Type", "multipart/form-data")
 		c.Next()
 	}
 }
