@@ -60,7 +60,7 @@ func AddItemHandler(db *sql.DB, c *gin.Context) {
 	}
 
 	// Save the image to the static/images directory
-	imagePath := filepath.Join("backend/static/images", file.Filename)
+	imagePath := filepath.Join("static/images", file.Filename)
 	if err := c.SaveUploadedFile(file, imagePath); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image"})
 		return
@@ -72,10 +72,12 @@ func AddItemHandler(db *sql.DB, c *gin.Context) {
 	// Set the image URL in the item
 	item.ImageURL = "/images/" + file.Filename
 
-	if err := repository.AddItem(db, item); err != nil {
+	id, err := repository.AddItem(db, item)
+	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	item.Id = id
 	c.JSON(http.StatusCreated, item)
 }
 
