@@ -1,67 +1,58 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import axios from "axios";
 
-interface User {
-  username: string;
+type User = {
+  id: string;
   email: string;
-  roles?: string[];
-}
+  token: string;
+  roles: string[];  // Added roles from the other context
+  username: string;
+};
 
 interface AuthContextType {
-  isAuthenticated: boolean;
   user: User | null;
   setUser: (user: User | null) => void;
+  isAuthenticated: boolean;
+  login: (userData: User) => void;
   logout: () => void;
-  updateUserRoles: (roles: string[]) => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  isAuthenticated: false,
-  user: null,
-  setUser: () => {},
-  logout: () => {},
-  updateUserRoles: async () => {},
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Check localStorage for user data on mount
-    const storedUser = localStorage.getItem("user");
+    const storedUser = localStorage.getItem('user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
   }, []);
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    localStorage.removeItem("authToken");
+  const login = (userData: User) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
   };
 
-  const updateUserRoles = async (roles: string[]) => {
-    try {
-      const response = await axios.post('http://localhost:8000/api/user/roles', { roles });
-      if (response.data.success) {
-        setUser(prev => ({ ...prev!, roles }));
-        localStorage.setItem('user', JSON.stringify({ ...user, roles }));
-      }
-    } catch (error) {
-      console.error('Error updating roles:', error);
-    }
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('user');
+    localStorage.removeItem('authToken'); // Add this line
+    localStorage.removeItem('userId');    // Add this line
+    localStorage.removeItem('username');  // Add this line
+    delete axios.defaults.headers.common["Authorization"]; // Add this line
   };
 
   return (
     <AuthContext.Provider
       value={{
-        isAuthenticated: !!user,
         user,
         setUser,
+        isAuthenticated: !!user,
+        login,
         logout,
-        updateUserRoles,
       }}
     >
       {children}
@@ -69,4 +60,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+

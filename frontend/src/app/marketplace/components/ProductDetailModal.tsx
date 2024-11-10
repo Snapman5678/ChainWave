@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Product } from "../types";
 import { useCart } from "@/app/context/CartContext";
 import { Plus, Minus } from "lucide-react";
+import Image from "next/image";
 
 interface ProductDetailModalProps {
   isOpen: boolean;
@@ -62,10 +63,16 @@ export default function ProductDetailModal({
         </DialogHeader>
         <div className="grid grid-cols-2 gap-6">
           <div>
-            <img
-              src={product.imageUrl}
+            <Image
+              src={product.imageUrl.startsWith('http') ? product.imageUrl : product.imageUrl}
               alt={product.name}
-              className="w-full rounded-lg"
+              width={400}
+              height={400}
+              className="w-full h-auto object-cover rounded-lg"
+              onError={(e: any) => {
+                e.target.src = "/images/placeholder.jpg"
+              }}
+              unoptimized={product.imageUrl.startsWith('http')}
             />
           </div>
           <div className="space-y-4">

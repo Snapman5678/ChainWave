@@ -10,3 +10,9 @@ export interface Product {
   contactEmail: string;
   contactPhone: string;
 }
+
+export interface User {
+  email: string;
+  username: string;
+  token: string;
+}

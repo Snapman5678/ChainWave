@@ -3,9 +3,26 @@
 import { useCart } from "../context/CartContext";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Trash2 } from "lucide-react";
+import { toast } from "react-hot-toast";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../context/AuthContext";
+import Image from "next/image";
+import { useEffect } from "react";
 
 export default function CartPage() {
   const { items, removeFromCart, updateQuantity, total } = useCart();
+  const { user } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!user) {
+      router.push("/auth/login");
+    }
+  }, [user, router]);
+
+  if (!user) {
+    return null; // or return a loading spinner
+  }
 
   const handleQuantityChange = (productId: string, newQuantity: number) => {
     const item = items.find(item => item.id === productId);
@@ -13,15 +30,31 @@ export default function CartPage() {
 
     if (newQuantity <= 0) {
       removeFromCart(productId);
-    } else if (newQuantity > item.quantity) {
-      alert(`Cannot add more items. Only ${item.quantity} units available in stock.`);
+      toast.success("Item removed from cart");
     } else {
-      updateQuantity(productId, newQuantity);
+      const maxQuantity = item.availableStock;
+      if (newQuantity > maxQuantity) {
+        toast.error(`Only ${maxQuantity} units available in stock`);
+      } else {
+        updateQuantity(productId, newQuantity);
+        toast.success("Cart updated");
+      }
     }
   };
 
   const handleCheckout = () => {
-    window.location.href = "/checkout";
+    if (!user) {
+      toast.error("Please login to checkout");
+      router.push("/auth/login");
+      return;
+    }
+    
+    if (items.length === 0) {
+      toast.error("Your cart is empty");
+      return;
+    }
+
+    router.push("/checkout");
   };
 
   return (
@@ -40,10 +73,12 @@ export default function CartPage() {
                   key={item.id}
                   className="bg-white p-4 rounded-lg shadow-sm flex items-center gap-4"
                 >
-                  <img
+                  <Image
                     src={item.imageUrl}
                     alt={item.name}
-                    className="w-24 h-24 object-cover rounded"
+                    width={96}
+                    height={96}
+                    className="object-cover rounded"
                   />
                   <div className="flex-1">
                     <h3 className="font-semibold">{item.name}</h3>

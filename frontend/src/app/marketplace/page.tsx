@@ -17,6 +17,8 @@ import ProductDetailModal from "./components/ProductDetailModal";
 import { useCart } from "../context/CartContext";
 import { Product } from "./types";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { toast } from "react-hot-toast";
 
 export default function MarketplacePage() {
   const { user } = useAuth();
@@ -37,7 +39,7 @@ export default function MarketplacePage() {
       price: 99.99,
       category: "electronics",
       quantity: 10,
-      imageUrl: "https://via.placeholder.com/200",
+      imageUrl: "/images/placeholder.jpg", // Updated path
       businessName: "Sample Business",
       contactEmail: "contact@example.com",
       contactPhone: "123-456-7890",
@@ -49,7 +51,7 @@ export default function MarketplacePage() {
       price: 199.99,
       category: "electronics",
       quantity: 5,
-      imageUrl: "https://via.placeholder.com/200",
+      imageUrl: "/images/placeholder.jpg", // Updated path
       businessName: "AudioHub",
       contactEmail: "support@audiohub.com",
       contactPhone: "987-654-3210",
@@ -62,7 +64,7 @@ export default function MarketplacePage() {
       price: 29.99,
       category: "clothing",
       quantity: 20,
-      imageUrl: "https://via.placeholder.com/200",
+      imageUrl: "/images/placeholder.jpg", // Updated path
       businessName: "EcoWear",
       contactEmail: "info@ecowear.com",
       contactPhone: "555-123-4567",
@@ -74,7 +76,7 @@ export default function MarketplacePage() {
       price: 15.99,
       category: "food",
       quantity: 50,
-      imageUrl: "https://via.placeholder.com/200",
+      imageUrl: "/images/placeholder.jpg", // Updated path
       businessName: "CoffeeElite",
       contactEmail: "contact@coffeeelite.com",
       contactPhone: "444-555-6666",
@@ -86,7 +88,7 @@ export default function MarketplacePage() {
       price: 49.99,
       category: "home",
       quantity: 15,
-      imageUrl: "https://via.placeholder.com/200",
+      imageUrl: "/images/placeholder.jpg", // Updated path
       businessName: "BrightHome",
       contactEmail: "sales@brighthouse.com",
       contactPhone: "222-333-4444",
@@ -147,15 +149,27 @@ export default function MarketplacePage() {
   const { addToCart } = useCart();
 
   const handleQuickAddToCart = (product: Product) => {
-    addToCart(product, 1); // Add second parameter for quantity
-    setAddedToCart({ ...addedToCart, [product.id]: true });
-    setTimeout(() => {
-      setAddedToCart({ ...addedToCart, [product.id]: false });
-    }, 2000);
+    if (!user) {
+      router.push("/auth/login");
+      return;
+    }
+    const success = addToCart(product, 1);
+    if (success) {
+      toast.success("Product added to cart.");
+      setAddedToCart({ ...addedToCart, [product.id]: true });
+      setTimeout(() => {
+        setAddedToCart({ ...addedToCart, [product.id]: false });
+      }, 2000);
+    } else {
+      toast.error(`Only ${product.quantity} units available in stock.`);
+    }
   };
 
   const handleQuickBuyNow = (product: Product) => {
-    // Store the single item purchase in sessionStorage instead of cart
+    if (!user) {
+      router.push("/auth/login");
+      return;
+    }
     sessionStorage.setItem('directPurchase', JSON.stringify({
       items: [{...product, quantity: 1}],
       isDirectPurchase: true
@@ -225,10 +239,16 @@ export default function MarketplacePage() {
                     setIsDetailModalOpen(true);
                   }}
                 >
-                  <img
-                    src={product.imageUrl}
+                  <Image
+                    src={product.imageUrl.startsWith('http') ? product.imageUrl : product.imageUrl}
                     alt={product.name}
-                    className="w-full h-48 object-cover"
+                    width={200}
+                    height={200}
+                    className="w-full h-48 object-cover rounded-t-lg"
+                    onError={(e: any) => {
+                      e.target.src = "/images/placeholder.jpg" // Updated fallback image path
+                    }}
+                    unoptimized={product.imageUrl.startsWith('http')} // Only use unoptimized for external URLs
                   />
                   <div className="p-4">
                     <h3 className="font-semibold text-lg mb-2">

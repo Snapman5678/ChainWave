@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation"; 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -13,13 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Package, TrendingUp, Truck, Factory, Search } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
-import RoleSelectionForm from "../components/RoleSelectionForm";
+// import RoleSelectionForm from "../components/RoleSelectionForm";
 
 export default function DashboardPage() {
-  const { user, updateUserRoles } = useAuth();
+  const router = useRouter();
+  const { user } = useAuth();
   const [userType, setUserType] = useState("customer");
   const [orderId, setOrderId] = useState("");
-  // uncomment later const [orders, setOrders] = useState([
   const [orders] = useState([
     {
       id: "123",
@@ -35,15 +36,33 @@ export default function DashboardPage() {
     },
   ]);
 
-  if (!user?.roles || user.roles.length === 0) {
-    return (
-      <RoleSelectionForm 
-        onSubmit={async (roles) => {
-          await updateUserRoles(roles);
-        }} 
-      />
-    );
+  useEffect(() => {
+    // Add error boundary
+    try {
+      if (!user) {
+        router.push("/auth/login");
+      }
+    } catch (error) {
+      console.error("Navigation error:", error);
+    }
+  }, [user, router]);
+
+  // If no user, show a loading state instead of null
+  if (!user) {
+    return <div>Loading...</div>;
   }
+
+  // uncomment later const [orders, setOrders] = useState([
+  //uncomment later
+  // if (!user?.roles || user.roles.length === 0) {
+  //   return (
+  //     <RoleSelectionForm 
+  //       onSubmit={async (roles) => {
+  //         await updateUserRoles(roles);
+  //       }} 
+  //     />
+  //   );
+  // }
 
   const renderCustomerDashboard = () => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
