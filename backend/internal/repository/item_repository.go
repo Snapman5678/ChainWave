@@ -21,15 +21,25 @@ func EditItem(db *sql.DB, item models.Item) error {
 	return err
 }
 
-// GetItemById fetches an item by its ID
-func GetItemById(db *sql.DB, itemId uuid.UUID) (models.Item, error) {
-	var item models.Item
-	err := db.QueryRow(`SELECT id, name, description, price, weight, dimensions, category, quantity, image_url FROM items WHERE id = $1`, itemId).Scan(
-		&item.Id, &item.Name, &item.Description, &item.Price, &item.Weight, &item.Dimensions, &item.Category, &item.Quantity, &item.ImageURL)
-	if err != nil {
-		return item, err
-	}
-	return item, nil
+// GetItemById fetches an item by its ID along with business admin and location details
+func GetItemById(db *sql.DB, itemId uuid.UUID) (models.ItemWithDetail, error) {
+	var item models.ItemWithDetail
+	err := db.QueryRow(`
+		SELECT 
+			i.id, i.name, i.description, i.price, i.weight, i.dimensions, 
+			i.category, i.quantity, i.image_url,
+			b.company_name, b.contact_info,
+			l.address, l.city, l.state
+		FROM items i
+		LEFT JOIN business_admins b ON i.business_admin_id = b.id
+		LEFT JOIN locations l ON b.location_id = l.id
+		WHERE i.id = $1`, itemId).Scan(
+		&item.Id, &item.Name, &item.Description, &item.Price, &item.Weight, 
+		&item.Dimensions, &item.Category, &item.Quantity, &item.ImageURL,
+		&item.BusinessAdminCompanyName, &item.BusinessAdminContactInfo,
+		&item.LocationAddress, &item.LocationCity, &item.LocationState,
+	)
+	return item, err
 }
 
 // DeleteItem deletes an item from the database
