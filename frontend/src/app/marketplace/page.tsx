@@ -18,6 +18,7 @@ import { useCart } from "../context/CartContext";
 import { Product } from "./types";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { toast } from "react-hot-toast";
 
 export default function MarketplacePage() {
   const { user } = useAuth();
@@ -152,11 +153,16 @@ export default function MarketplacePage() {
       router.push("/auth/login");
       return;
     }
-    addToCart(product, 1);
-    setAddedToCart({ ...addedToCart, [product.id]: true });
-    setTimeout(() => {
-      setAddedToCart({ ...addedToCart, [product.id]: false });
-    }, 2000);
+    const success = addToCart(product, 1);
+    if (success) {
+      toast.success("Product added to cart.");
+      setAddedToCart({ ...addedToCart, [product.id]: true });
+      setTimeout(() => {
+        setAddedToCart({ ...addedToCart, [product.id]: false });
+      }, 2000);
+    } else {
+      toast.error(`Only ${product.quantity} units available in stock.`);
+    }
   };
 
   const handleQuickBuyNow = (product: Product) => {

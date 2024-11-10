@@ -5,11 +5,12 @@ import { Product } from "../marketplace/types";
 
 interface CartItem extends Product {
   quantity: number;
+  availableStock: number;
 }
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Product, quantity: number) => void;
+  addToCart: (product: Product, quantity: number) => boolean;
   removeFromCart: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -18,7 +19,7 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType>({
   items: [],
-  addToCart: () => {},
+  addToCart: () => false,
   removeFromCart: () => {},
   updateQuantity: () => {},
   clearCart: () => {},
@@ -47,29 +48,29 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [items]);
 
-  const addToCart = (product: Product, quantity: number = 1) => {
+  const addToCart = (product: Product, quantity: number = 1): boolean => {
+    let added = false;
     setItems((current) => {
       const exists = current.find((item) => item.id === product.id);
+      const maxQuantity = product.quantity;
       if (exists) {
-        const newQuantity = exists.quantity + quantity;
-        if (newQuantity > product.quantity) {
-          alert(`Cannot add more items. Only ${product.quantity} units available in stock.`);
+        if (exists.quantity >= maxQuantity) {
+          // Cannot add more than available stock
           return current;
         }
+        const newQuantity = Math.min(exists.quantity + quantity, maxQuantity);
+        added = true;
         return current.map((item) =>
           item.id === product.id
             ? { ...item, quantity: newQuantity }
             : item
         );
       }
-      
-      if (quantity > product.quantity) {
-        alert(`Cannot add ${quantity} items. Only ${product.quantity} units available in stock.`);
-        return current;
-      }
-      // Store the original product quantity as availableStock
-      return [...current, { ...product, quantity, availableStock: product.quantity }];
+      const initialQuantity = Math.min(quantity, maxQuantity);
+      added = true;
+      return [...current, { ...product, quantity: initialQuantity, availableStock: maxQuantity }];
     });
+    return added;
   };
 
   const removeFromCart = (productId: string) => {
@@ -81,20 +82,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       removeFromCart(productId);
       return;
     }
-    
-    setItems((current) => {
-      return current.map((item) => {
-        if (item.id === productId) {
-          // Compare against the original product quantity
-          if (quantity > item.quantity) {
-            alert(`Cannot add more items. Only ${item.quantity} units available in stock.`);
-            return item;
-          }
-          return { ...item, quantity };
-        }
-        return item;
-      });
-    });
+    setItems((current) =>
+      current.map((item) =>
+        item.id === productId ? { ...item, quantity } : item
+      )
+    );
   };
 
   const clearCart = () => {

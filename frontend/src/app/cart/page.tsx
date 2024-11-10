@@ -32,8 +32,7 @@ export default function CartPage() {
       removeFromCart(productId);
       toast.success("Item removed from cart");
     } else {
-      // Get the product's actual stock quantity from the item itself
-      const maxQuantity = item.quantity;
+      const maxQuantity = item.availableStock;
       if (newQuantity > maxQuantity) {
         toast.error(`Only ${maxQuantity} units available in stock`);
       } else {
