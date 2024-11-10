@@ -4,10 +4,14 @@ import (
 	"chainwave/backend/internal/models"
 	"chainwave/backend/internal/repository"
 	"database/sql"
+	"encoding/json"
+	"mime/multipart"
 	"net/http"
+	"os"
 	"path/filepath"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"io"
 	"log"
 )
 
@@ -122,4 +126,69 @@ func DeleteItemHandler(db *sql.DB, c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Item deleted successfully"})
+}
+
+// GetItemCountHandler handles fetching the total number of items
+func GetItemCountHandler(db *sql.DB, c *gin.Context) {
+	count, err := repository.GetItemCount(db)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"count": count})
+}
+
+// GetItemsByCategoryHandler handles fetching items by category and includes images in the multipart response
+func GetItemsByCategoryHandler(db *sql.DB, c *gin.Context, category string, limit, offset int) {
+	// The handler now receives category as a parameter from the query
+	items, err := repository.GetItemsByCategory(db, category, offset, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Prepare multipart writer
+	multipartWriter := multipart.NewWriter(c.Writer)
+	c.Writer.Header().Set("Content-Type", multipartWriter.FormDataContentType())
+
+	// Add items as JSON part
+	jsonPart, err := multipartWriter.CreateFormField("items")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create form field"})
+		return
+	}
+	itemsJSON, err := json.Marshal(items)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal items"})
+		return
+	}
+	_, err = jsonPart.Write(itemsJSON)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write items JSON"})
+		return
+	}
+
+	// Add each image as a separate part
+	for _, item := range items {
+		imagePath := filepath.Join("static/images", filepath.Base(item.ImageURL))
+		file, err := os.Open(imagePath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to open image"})
+			return
+		}
+		defer file.Close()
+
+		imagePart, err := multipartWriter.CreateFormFile("images", filepath.Base(item.ImageURL))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create image part"})
+			return
+		}
+		_, err = io.Copy(imagePart, file)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to copy image data"})
+			return
+		}
+	}
+
+	multipartWriter.Close()
 }

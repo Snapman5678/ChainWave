@@ -239,6 +239,34 @@ END $$;`)
 		return nil, err
 	}
 
+	// Create admin user with all privileges
+	_, err = db.Exec(`DO $$
+	BEGIN
+	IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'admin') THEN
+		CREATE ROLE admin WITH LOGIN PASSWORD 'admin_password';
+		GRANT ALL PRIVILEGES ON DATABASE fullstack TO admin;
+	END IF;
+	END $$;`)
+	if err != nil {
+	return nil, err
+	}
+
+	// Create general user with limited privileges
+	_, err = db.Exec(`DO $$
+	BEGIN
+	IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'general') THEN
+		CREATE ROLE general WITH LOGIN PASSWORD 'general_password';
+		GRANT CONNECT ON DATABASE fullstack TO general;
+		GRANT USAGE ON SCHEMA public TO general;
+		GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO general;
+		ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO general;
+	END IF;
+	END $$;`)
+	if err != nil {
+	return nil, err
+	}
+
+
 	return db, nil
 }
 

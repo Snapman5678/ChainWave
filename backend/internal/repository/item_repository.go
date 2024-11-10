@@ -37,3 +37,35 @@ func DeleteItem(db *sql.DB, itemId uuid.UUID) error {
 	_, err := db.Exec(`DELETE FROM items WHERE id = $1`, itemId)
 	return err
 }
+
+// GetItemCount fetches the total number of items in the database
+func GetItemCount(db *sql.DB) (int, error) {
+	var count int
+	err := db.QueryRow(`SELECT COUNT(*) FROM items`).Scan(&count)
+	return count, err
+}
+
+// GetItemsByCategory fetches a list of items from the database
+func GetItemsByCategory(db *sql.DB, category string, offset int, limit int) ([]models.Item, error) {
+	var rows *sql.Rows
+	var err error
+	if category == "" {
+		rows, err = db.Query(`SELECT id, name, description, price, weight, dimensions, category, quantity, image_url FROM items OFFSET $1 LIMIT $2`, offset, limit)
+	} else {
+		rows, err = db.Query(`SELECT id, name, description, price, weight, dimensions, category, quantity, image_url FROM items WHERE category = $1 OFFSET $2 LIMIT $3`, category, offset, limit)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.Item
+	for rows.Next() {
+		var item models.Item
+		if err := rows.Scan(&item.Id, &item.Name, &item.Description, &item.Price, &item.Weight, &item.Dimensions, &item.Category, &item.Quantity, &item.ImageURL); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, nil
+}

@@ -66,6 +66,44 @@ func AuthMiddleware(secretKey string) gin.HandlerFunc {
 	}
 }
 
+// RoleSwitchMiddleware sets the PostgreSQL role to 'admin' if the user is 'admin', otherwise uses the default role.
+func RoleSwitchMiddleware(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Get the user ID (UUID) from the context
+		userID, exists := c.Get("userID")
+		if !exists {
+			c.JSON(http.StatusForbidden, gin.H{"error": "User ID not found"})
+			c.Abort()
+			return
+		}
+
+		// Query the database to get the username associated with this user ID
+		var username string
+		err := db.QueryRow("SELECT username FROM users WHERE id = $1", userID).Scan(&username)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve username"})
+			c.Abort()
+			return
+		}
+
+		// Set role to 'admin' if the username is 'admin'
+		if username == "admin" {
+			_, err := db.Exec("SET ROLE admin")
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to set database role to admin"})
+				c.Abort()
+				return
+			}
+			// Ensure role is reset after the request
+			defer db.Exec("RESET ROLE")
+		}
+		// Default role will be used if the username is not 'admin'
+
+		c.Next()
+	}
+}
+
+
 // AuthAdminMiddleware extracts the user ID from the JWT token, fetches the roles from the database, and sets them in the context.
 func AuthAdminMiddleware(secretKey string, db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
