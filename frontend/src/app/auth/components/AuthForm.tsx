@@ -30,24 +30,6 @@ interface User {
   roles: string[];
 }
 
-const setAuthToken = (token: string, userId?: string, username?: string) => {
-  if (token) {
-    localStorage.setItem("authToken", token);
-    if (userId) {
-      localStorage.setItem("userId", userId);
-    }
-    if (username) {
-      localStorage.setItem("username", username);
-    }
-    axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-  } else {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("userId");
-    localStorage.removeItem("username");
-    delete axios.defaults.headers.common["Authorization"];
-  }
-};
-
 // Configure axios interceptor to add token to all requests
 axios.interceptors.request.use(
   (config) => {
@@ -63,8 +45,7 @@ axios.interceptors.request.use(
 );
 
 export default function AuthForm({ mode }: AuthFormProps) {
-  const { user } = useAuth();
-  const { setUser } = useAuth();
+  const { user, setUser, updateToken } = useAuth();
   const router = useRouter();
   const [formData, setFormData] = useState({
     email: "",
@@ -172,6 +153,25 @@ export default function AuthForm({ mode }: AuthFormProps) {
     }
   };
 
+  const fetchUserRoles = async (token: string) => {
+    try {
+      const response = await axios.get('http://localhost:8000/api/role', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.roles && response.data.roles.length > 0) {
+        const roles = response.data.roles.map((role: any) => 
+          typeof role === 'string' ? role : role.name || String(role)
+        );
+        return roles;
+      }
+      return [];
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+      return [];
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -205,27 +205,24 @@ export default function AuthForm({ mode }: AuthFormProps) {
         password: formData.password,
       });
 
-      console.log("Server response:", response.data); // For debugging
-
       if (mode === "register") {
-        // Registration successful, navigate to login page
         setLoadingMessage("Account created successfully!");
         router.push("/auth/login");
       } else if (response.data.token) {
-        // Login successful, set auth token and navigate to dashboard
-        const { token, userId, username, email } = response.data;
-        setAuthToken(token, userId, username);
-
+        // Fetch roles immediately after successful login
+        const roles = await fetchUserRoles(response.data.token);
+        
+        // Create user data with roles
         const userData: User = {
-          id: userId, // from response.data
-          username,
-          email,
-          token,
-          roles: response.data.roles || [] // Add roles from response or default to empty array
+          id: response.data.userId,
+          username: response.data.username,
+          email: formData.email,
+          token: response.data.token,
+          roles: roles // Include the fetched roles
         };
+        
         setUser(userData);
-        localStorage.setItem("user", JSON.stringify(userData));
-
+        updateToken(response.data.token);
         setLoadingMessage("Login successful!");
         router.push("/dashboard");
       }
@@ -237,7 +234,6 @@ export default function AuthForm({ mode }: AuthFormProps) {
         ...prev,
         email: errorMessage,
       }));
-      setAuthToken("");
       setLoadingMessage("");
     } finally {
       setLoading(false);

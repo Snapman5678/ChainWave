@@ -20,6 +20,12 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
 
+// Add this interface near the top of the file
+interface Role {
+  name?: string;
+  [key: string]: any;
+}
+
 export default function MarketplacePage() {
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -177,6 +183,14 @@ export default function MarketplacePage() {
     router.push("/checkout");
   };
 
+  // Update the business role check with proper typing
+  const isBusinessAdmin = user?.roles?.some((role: string | Role) => {
+    if (typeof role === 'string') {
+      return role.toLowerCase() === 'business';
+    }
+    return (role.name || '').toLowerCase() === 'business';
+  });
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -186,7 +200,7 @@ export default function MarketplacePage() {
             <h1 className="text-2xl font-semibold text-gray-900">
               Marketplace
             </h1>
-            {user?.roles?.includes("business") && (
+            {isBusinessAdmin && (  // Use the new check
               <Button onClick={() => setIsModalOpen(true)}>
                 <PlusCircle className="h-4 w-4 mr-2" />
                 Add Product
