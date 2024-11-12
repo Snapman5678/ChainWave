@@ -21,19 +21,61 @@ func EditItem(db *sql.DB, item models.Item) error {
 	return err
 }
 
-// GetItemById fetches an item by its ID
-func GetItemById(db *sql.DB, itemId uuid.UUID) (models.Item, error) {
-	var item models.Item
-	err := db.QueryRow(`SELECT id, name, description, price, weight, dimensions, category, quantity, image_url FROM items WHERE id = $1`, itemId).Scan(
-		&item.Id, &item.Name, &item.Description, &item.Price, &item.Weight, &item.Dimensions, &item.Category, &item.Quantity, &item.ImageURL)
-	if err != nil {
-		return item, err
-	}
-	return item, nil
+// GetItemById fetches an item by its ID along with business admin and location details
+func GetItemById(db *sql.DB, itemId uuid.UUID) (models.ItemWithDetail, error) {
+	var item models.ItemWithDetail
+	err := db.QueryRow(`
+		SELECT 
+			i.id, i.name, i.description, i.price, i.weight, i.dimensions, 
+			i.category, i.quantity, i.image_url,
+			b.company_name, b.contact_info,
+			l.address, l.city, l.state
+		FROM items i
+		LEFT JOIN business_admins b ON i.business_admin_id = b.id
+		LEFT JOIN locations l ON b.location_id = l.id
+		WHERE i.id = $1`, itemId).Scan(
+		&item.Id, &item.Name, &item.Description, &item.Price, &item.Weight, 
+		&item.Dimensions, &item.Category, &item.Quantity, &item.ImageURL,
+		&item.BusinessAdminCompanyName, &item.BusinessAdminContactInfo,
+		&item.LocationAddress, &item.LocationCity, &item.LocationState,
+	)
+	return item, err
 }
 
 // DeleteItem deletes an item from the database
 func DeleteItem(db *sql.DB, itemId uuid.UUID) error {
 	_, err := db.Exec(`DELETE FROM items WHERE id = $1`, itemId)
 	return err
+}
+
+// GetItemCount fetches the total number of items in the database
+func GetItemCount(db *sql.DB) (int, error) {
+	var count int
+	err := db.QueryRow(`SELECT COUNT(*) FROM items`).Scan(&count)
+	return count, err
+}
+
+// GetItemsByCategory fetches a list of items from the database
+func GetItemsByCategory(db *sql.DB, category string, offset int, limit int) ([]models.Item, error) {
+	var rows *sql.Rows
+	var err error
+	if category == "" {
+		rows, err = db.Query(`SELECT id, name, description, price, weight, dimensions, category, quantity, image_url FROM items OFFSET $1 LIMIT $2`, offset, limit)
+	} else {
+		rows, err = db.Query(`SELECT id, name, description, price, weight, dimensions, category, quantity, image_url FROM items WHERE category = $1 OFFSET $2 LIMIT $3`, category, offset, limit)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []models.Item
+	for rows.Next() {
+		var item models.Item
+		if err := rows.Scan(&item.Id, &item.Name, &item.Description, &item.Price, &item.Weight, &item.Dimensions, &item.Category, &item.Quantity, &item.ImageURL); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, nil
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"chainwave/backend/internal/handlers"
@@ -14,7 +15,7 @@ func main() {
 	// Initialize the database
 	log.Println("DATABASE_URL: ", os.Getenv("DATABASE_URL"))
 	db, err := config.InitDB(os.Getenv("DATABASE_URL"))
-	if err != nil {
+	if (err != nil) {
 		log.Fatal(err)
 	}
 	defer db.Close()
@@ -39,6 +40,7 @@ func main() {
 	// Authenticated routes (protected by JWT middleware)
 	authRoutes := router.Group("/api")
 	authRoutes.Use(middleware.AuthMiddleware("your_secret_key")) // Replace with your actual secret key
+	authRoutes.Use(middleware.RoleSwitchMiddleware(db))
 
 	// Routes that require JWT authentication
 	authRoutes.POST("/customer", func(c *gin.Context) { handlers.AddCustomerHandler(db, c) })
@@ -61,9 +63,25 @@ func main() {
 	authRoleRoutes.Use(middleware.AuthAdminMiddleware("your_secret_key", db)) // Replace with your actual secret key
 
 	// Item-related routes
-	itemRoutes := authRoleRoutes.Group("/item")
+	itemRoutes := authRoleRoutes.Group("/items")
+
+	itemRoutes.GET("/count", func(c *gin.Context) { handlers.GetItemCountHandler(db, c) })
+
+	// Middleware for form data
 	itemRoutes.Use(middleware.FormContentTypeMiddleware())
 	itemRoutes.POST("/", func(c *gin.Context) { handlers.AddItemHandler(db, c) })
+	itemRoutes.PUT("/:id", func(c *gin.Context) { handlers.EditItemHandler(db, c) }) // Added PUT route for editing
+
+	// Route that gets all items based on category and pagination
+	itemRoutes.GET("/", func(c *gin.Context) {
+		category := c.Query("category")
+		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+		offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+		handlers.GetItemsByCategoryHandler(db, c, category, limit, offset)
+	})
+
+	// Route that gets an item by its ID
+	itemRoutes.GET("/:id", func(c *gin.Context) { handlers.GetItemHandler(db, c) })
 
 	// Start the server
 	log.Fatal(router.Run(":8000"))
