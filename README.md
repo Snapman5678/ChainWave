@@ -99,7 +99,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Contact
 
-Aamir Mohammed - [@Snapman5678](https://github.com/Snapman5678)
+Aamir Mohammed - [@Snapman5678](https://github.com/Snapman5678) </br>
 A Arshad Khan - [@ArshdKhan](https://github.com/ArshdKhan/)
 
 Project Link: [https://github.com/Snapman5678/ChainWave](https://github.com/Snapman5678/ChainWave)
