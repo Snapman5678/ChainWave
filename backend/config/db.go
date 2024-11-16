@@ -229,8 +229,7 @@ END $$;`)
 	if err != nil {
 		return nil, err
 	}
-
-	// Create the trigger on the items table
+	
 	_, err = db.Exec(`CREATE TRIGGER check_inventory
 	AFTER INSERT OR UPDATE ON items
 	FOR EACH ROW
@@ -238,7 +237,7 @@ END $$;`)
 	if err != nil {
 		return nil, err
 	}
-
+	
 	// Create or replace the PostgreSQL function for upserting user roles
 	_, err = db.Exec(`DO $$
 	BEGIN
@@ -265,6 +264,29 @@ END $$;`)
 	if err != nil {
 	return nil, err
 	}
+
+	// Create or replace the PostgreSQL function for upserting user roles
+	_, err = db.Exec(`CREATE OR REPLACE FUNCTION upsert_user_role(
+		p_user_id UUID,
+		p_customer_id UUID,
+		p_business_admin_id UUID,
+		p_transporter_id UUID,
+		p_supplier_id UUID
+	) RETURNS VOID AS $$
+	BEGIN
+		INSERT INTO user_roles (user_id, customer_id, business_admin_id, transporter_id, supplier_id)
+		VALUES (p_user_id, p_customer_id, p_business_admin_id, p_transporter_id, p_supplier_id)
+		ON CONFLICT (user_id) DO UPDATE SET
+			customer_id = COALESCE(user_roles.customer_id, EXCLUDED.customer_id),
+			business_admin_id = COALESCE(user_roles.business_admin_id, EXCLUDED.business_admin_id),
+			transporter_id = COALESCE(user_roles.transporter_id, EXCLUDED.transporter_id),
+			supplier_id = COALESCE(user_roles.supplier_id, EXCLUDED.supplier_id);
+	END;
+	$$ LANGUAGE plpgsql;`)
+	if err != nil {
+		return nil, err
+	}
+
 
 
 	return db, nil
