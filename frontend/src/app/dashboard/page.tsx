@@ -1,7 +1,11 @@
+/* eslint-disable */
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation"; 
+import { useRouter } from "next/navigation";
+import axios from "axios";
+import { useAuth } from "../context/AuthContext";
+import RoleSelectionForm from "../components/RoleSelectionForm"; // Add this import
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -11,58 +15,326 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Button, } from "@/components/ui/button";
 import { Package, TrendingUp, Truck, Factory, Search } from "lucide-react";
-import { useAuth } from "../context/AuthContext";
-// import RoleSelectionForm from "../components/RoleSelectionForm";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user } = useAuth();
-  const [userType, setUserType] = useState("customer");
+  const { user, setUser, updateToken } = useAuth();
+  const [userType, setUserType] = useState<string>("customer");
+  const [showRoleForm, setShowRoleForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [orderId, setOrderId] = useState("");
-  const [orders] = useState([
+  const [showRouteModal, setShowRouteModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [orders, setOrders] = useState([
     {
       id: "123",
       status: "In Transit",
       date: "2024-03-15",
       details: "Electronics Shipment",
+      delivered: false,
+      origin: "Bangalore",
+      destination: "Chennai",
+      route: {
+        origin: { lat: 12.9716, lng: 77.5946 }, // Bangalore coordinates
+        destination: { lat: 13.0827, lng: 80.2707 }, // Chennai coordinates
+      }
     },
     {
       id: "124",
       status: "Pending",
       date: "2024-03-16",
       details: "Raw Materials",
+      delivered: false,
+      origin: "Mumbai",
+      destination: "Pune",
+      route: {
+        origin: { lat: 19.0760, lng: 72.8777 }, // Mumbai coordinates
+        destination: { lat: 18.5204, lng: 73.8567 }, // Pune coordinates
+      }
     },
   ]);
+  const [showAddShipmentModal, setShowAddShipmentModal] = useState(false);
+  const [newShipment, setNewShipment] = useState({
+    shipmentId: '',  // Add this line
+    origin: '',
+    destination: '',
+    details: '',
+    date: '',
+    weight: '',
+    type: ''
+  });
 
   useEffect(() => {
-    // Add error boundary
-    try {
+    const checkUserRoles = async () => {
       if (!user) {
         router.push("/auth/login");
+        return;
       }
-    } catch (error) {
-      console.error("Navigation error:", error);
-    }
-  }, [user, router]);
 
-  // If no user, show a loading state instead of null
-  if (!user) {
-    return <div>Loading...</div>;
+      setIsLoading(true);
+      try {
+        const response = await axios.get('http://localhost:8000/api/role', {
+          headers: { Authorization: `Bearer ${user.token}` }
+        });
+
+        // Update token if provided in response
+        if (response.data.token) {
+          updateToken(response.data.token);
+        }
+
+        if (response.data.roles && response.data.roles.length > 0) {
+          // Extract role names as strings
+          const roles = response.data.roles.map((role: any) => 
+            typeof role === 'string' ? role : role.name || String(role)
+          );
+
+          // Only update state if roles have changed
+          if (JSON.stringify(user.roles) !== JSON.stringify(roles)) {
+            setUser({
+              ...user,
+              roles: roles
+            });
+          }
+          setUserType(roles[0].toLowerCase());
+          setShowRoleForm(false);
+        } else {
+          // No roles found, show role selection form
+          setShowRoleForm(true);
+        }
+      } catch (error: any) {
+        console.error("Error checking roles:", error);
+        if (error.response?.status === 401) {
+          // Token expired or invalid
+          router.push("/auth/login");
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkUserRoles();
+  // Update the dependency array
+  }, [user?.token]);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
-  // uncomment later const [orders, setOrders] = useState([
-  //uncomment later
-  // if (!user?.roles || user.roles.length === 0) {
-  //   return (
-  //     <RoleSelectionForm 
-  //       onSubmit={async (roles) => {
-  //         await updateUserRoles(roles);
-  //       }} 
-  //     />
-  //   );
-  // }
+  // Show role selection form when no roles exist
+  if (showRoleForm) {
+    return <RoleSelectionForm onSubmit={(roles: string[]) => {  // Add type annotation
+      if (roles.length > 0) {
+        setUser({
+          ...user!,
+          roles: roles
+        });
+        setUserType(roles[0]);
+        setShowRoleForm(false);
+      }
+    }} />;
+  }
+
+  const handleDeliveryComplete = (orderId: string) => {
+    setOrders(orders.map(order => 
+      order.id === orderId 
+        ? { ...order, status: "Delivered", delivered: true }
+        : order
+    ));
+  };
+
+  const RouteModal = ({ order, isOpen, onClose }: any) => {
+    if (!order) return null;
+    
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              Route: {order.origin} to {order.destination}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="h-[400px] w-full bg-gray-100 rounded-lg">
+            <iframe
+              width="100%"
+              height="100%"
+              loading="lazy"
+              allowFullScreen
+              referrerPolicy="no-referrer-when-downgrade"
+              src={`https://www.google.com/maps/embed/v1/directions?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API}&origin=${order.origin}&destination=${order.destination}&mode=driving`}
+            ></iframe>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  const AddShipmentModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+    // Create local state for form data
+    const [formData, setFormData] = useState({
+      shipmentId: '',
+      origin: '',
+      destination: '',
+      details: '',
+      date: '',
+      weight: '',
+      type: ''
+    });
+
+    // Reset form when modal opens
+    useEffect(() => {
+      if (isOpen) {
+        setFormData({
+          shipmentId: '',
+          origin: '',
+          destination: '',
+          details: '',
+          date: '',
+          weight: '',
+          type: ''
+        });
+      }
+    }, [isOpen]);
+
+    const handleSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      const newOrder = {
+        id: formData.shipmentId || Math.random().toString(36).substr(2, 9),
+        status: "Pending",
+        delivered: false,
+        route: {
+          origin: { lat: 0, lng: 0 },
+          destination: { lat: 0, lng: 0 }
+        },
+        ...formData
+      };
+      
+      setOrders([...orders, newOrder]);
+      onClose();
+    };
+
+    const handleInputChange = (field: string, value: string) => {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    };
+
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Shipment</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="shipmentId">Shipment ID</Label>
+              <Input
+                id="shipmentId"
+                type="number"
+                value={formData.shipmentId}
+                onChange={(e) => handleInputChange('shipmentId', e.target.value)}
+                placeholder="Enter shipment ID"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="origin">Origin</Label>
+                <Input
+                  id="origin"
+                  value={formData.origin}
+                  onChange={(e) => handleInputChange('origin', e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="destination">Destination</Label>
+                <Input
+                  id="destination"
+                  value={formData.destination}
+                  onChange={(e) => handleInputChange('destination', e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="details">Shipment Details</Label>
+              <Textarea
+                id="details"
+                value={formData.details}
+                onChange={(e) => handleInputChange('details', e.target.value)}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="date">Delivery Date</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => handleInputChange('date', e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="weight">Weight (kg)</Label>
+                <Input
+                  id="weight"
+                  type="number"
+                  value={formData.weight}
+                  onChange={(e) => handleInputChange('weight', e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="type">Shipment Type</Label>
+              <Select
+                value={formData.type}
+                onValueChange={(value) => handleInputChange('type', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="express">Express</SelectItem>
+                  <SelectItem value="standard">Standard</SelectItem>
+                  <SelectItem value="economy">Economy</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                Add Shipment
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    );
+  };
 
   const renderCustomerDashboard = () => (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -71,14 +343,14 @@ export default function DashboardPage() {
           <CardTitle>Order Tracking</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full">
             <Input
               placeholder="Enter Order ID"
               value={orderId}
               onChange={(e) => setOrderId(e.target.value)}
-              className="max-w-xs"
+              className="flex-1"
             />
-            <Button variant="outline">
+            <Button variant="outline" className="whitespace-nowrap">
               <Search className="h-4 w-4 mr-2" />
               Track Order
             </Button>
@@ -170,10 +442,13 @@ export default function DashboardPage() {
   );
 
   const renderTransporterDashboard = () => (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      <Card>
-        <CardHeader>
+    <div className="grid gap-4 grid-cols-1 lg:grid-cols-12">
+      <Card className="lg:col-span-8">
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Delivery Schedule</CardTitle>
+          <Button onClick={() => setShowAddShipmentModal(true)}>
+            Add New Shipment
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -182,13 +457,45 @@ export default function DashboardPage() {
                 <div className="font-medium">Delivery #{order.id}</div>
                 <div className="text-sm text-gray-500">{order.details}</div>
                 <div className="text-sm text-gray-500">ETA: {order.date}</div>
+                <div className="text-sm text-gray-500">
+                  Route: {order.origin} to {order.destination}
+                </div>
+                <div className="mt-2 flex justify-between items-center">
+                  <span className={`text-sm ${
+                    order.status === "Delivered" ? "text-green-600" : "text-blue-600"
+                  }`}>
+                    Status: {order.status}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setShowRouteModal(true);
+                      }}
+                    >
+                      View Route
+                    </Button>
+                    {!order.delivered && (
+                      <Button 
+                        size="sm"
+                        variant="outline"
+                        className="text-green-600 hover:text-green-700"
+                        onClick={() => handleDeliveryComplete(order.id)}
+                      >
+                        Mark as Delivered
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="lg:col-span-4">
         <CardHeader>
           <CardTitle>Vehicle Status</CardTitle>
         </CardHeader>
@@ -202,9 +509,29 @@ export default function DashboardPage() {
               <span>In Transit</span>
               <span className="font-medium">3</span>
             </div>
+            <div className="flex justify-between">
+              <span>Completed Deliveries</span>
+              <span className="font-medium">
+                {orders.filter(order => order.delivered).length}
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      <RouteModal
+        order={selectedOrder}
+        isOpen={showRouteModal}
+        onClose={() => {
+          setShowRouteModal(false);
+          setSelectedOrder(null);
+        }}
+      />
+
+      <AddShipmentModal
+        isOpen={showAddShipmentModal}
+        onClose={() => setShowAddShipmentModal(false)}
+      />
     </div>
   );
 
@@ -259,26 +586,15 @@ export default function DashboardPage() {
     }
   };
 
-  // uncomment later
-  // const getUserTypeIcon = () => {
-  //   switch (userType) {
-  //     case "customer":
-  //       return <Package className="h-4 w-4" />;
-  //     case "business":
-  //       return <TrendingUp className="h-4 w-4" />;
-  //     case "transporter":
-  //       return <Truck className="h-4 w-4" />;
-  //     case "supplier":
-  //       return <Factory className="h-4 w-4" />;
-  //     default:
-  //       return <Package className="h-4 w-4" />;
-  //   }
-  // };
+  const capitalizeRole = (role: string | undefined) => {
+    if (typeof role !== 'string' || !role) return '';
+    return role.charAt(0).toUpperCase() + role.slice(1);
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
             <p className="mt-1 text-sm text-gray-500">
@@ -286,40 +602,51 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <Select value={userType} onValueChange={setUserType}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Select user type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="customer">
+          {userType && (
+            <Select 
+              value={userType || "customer"} 
+              onValueChange={(value) => setUserType(value)}
+            >
+              <SelectTrigger className="w-[200px] bg-white shadow-sm">
                 <div className="flex items-center">
-                  <Package className="h-4 w-4 mr-2" />
-                  Customer
+                  {userType === "customer" && <Package className="h-4 w-4 mr-2" />}
+                  {userType === "business" && <TrendingUp className="h-4 w-4 mr-2" />}
+                  {userType === "transporter" && <Truck className="h-4 w-4 mr-2" />}
+                  {userType === "supplier" && <Factory className="h-4 w-4 mr-2" />}
+                  {capitalizeRole(userType)}
                 </div>
-              </SelectItem>
-              <SelectItem value="business">
-                <div className="flex items-center">
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  Business Admin
-                </div>
-              </SelectItem>
-              <SelectItem value="transporter">
-                <div className="flex items-center">
-                  <Truck className="h-4 w-4 mr-2" />
-                  Transporter
-                </div>
-              </SelectItem>
-              <SelectItem value="supplier">
-                <div className="flex items-center">
-                  <Factory className="h-4 w-4 mr-2" />
-                  Supplier
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+              </SelectTrigger>
+              <SelectContent className="bg-white">
+                <SelectItem value="customer" className="hover:bg-gray-100">
+                  <div className="flex items-center">
+                    <Package className="h-4 w-4 mr-2" />
+                    Customer
+                  </div>
+                </SelectItem>
+                <SelectItem value="business" className="hover:bg-gray-100">
+                  <div className="flex items-center">
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    Business Admin
+                  </div>
+                </SelectItem>
+                <SelectItem value="transporter" className="hover:bg-gray-100">
+                  <div className="flex items-center">
+                    <Truck className="h-4 w-4 mr-2" />
+                    Transporter
+                  </div>
+                </SelectItem>
+                <SelectItem value="supplier" className="hover:bg-gray-100">
+                  <div className="flex items-center">
+                    <Factory className="h-4 w-4 mr-2" />
+                    Supplier
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
-        {renderDashboard()}
+        {userType && renderDashboard()}
       </div>
     </div>
   );

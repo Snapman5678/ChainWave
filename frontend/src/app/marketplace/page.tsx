@@ -20,6 +20,12 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
 
+// Add this interface near the top of the file
+interface Role {
+  name?: string;
+  [key: string]: any;
+}
+
 export default function MarketplacePage() {
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,12 +40,12 @@ export default function MarketplacePage() {
   const [products, setProducts] = useState<Product[]>([
     {
       id: "1",
-      name: "Sample Product",
-      description: "This is a sample product description",
+      name: "watch",
+      description: "This is a watch description",
       price: 99.99,
       category: "electronics",
       quantity: 10,
-      imageUrl: "/images/placeholder.jpg", // Updated path
+      imageUrl: "/images/watch.png", // Updated path
       businessName: "Sample Business",
       contactEmail: "contact@example.com",
       contactPhone: "123-456-7890",
@@ -51,7 +57,7 @@ export default function MarketplacePage() {
       price: 199.99,
       category: "electronics",
       quantity: 5,
-      imageUrl: "/images/placeholder.jpg", // Updated path
+      imageUrl: "/images/headphone.png", // Updated path
       businessName: "AudioHub",
       contactEmail: "support@audiohub.com",
       contactPhone: "987-654-3210",
@@ -64,7 +70,7 @@ export default function MarketplacePage() {
       price: 29.99,
       category: "clothing",
       quantity: 20,
-      imageUrl: "/images/placeholder.jpg", // Updated path
+      imageUrl: "/images/tshirt.png", // Updated path
       businessName: "EcoWear",
       contactEmail: "info@ecowear.com",
       contactPhone: "555-123-4567",
@@ -76,7 +82,7 @@ export default function MarketplacePage() {
       price: 15.99,
       category: "food",
       quantity: 50,
-      imageUrl: "/images/placeholder.jpg", // Updated path
+      imageUrl: "/images/coffee.png", // Updated path
       businessName: "CoffeeElite",
       contactEmail: "contact@coffeeelite.com",
       contactPhone: "444-555-6666",
@@ -88,7 +94,7 @@ export default function MarketplacePage() {
       price: 49.99,
       category: "home",
       quantity: 15,
-      imageUrl: "/images/placeholder.jpg", // Updated path
+      imageUrl: "/images/ledlamp.png", // Updated path
       businessName: "BrightHome",
       contactEmail: "sales@brighthouse.com",
       contactPhone: "222-333-4444",
@@ -177,6 +183,14 @@ export default function MarketplacePage() {
     router.push("/checkout");
   };
 
+  // Update the business role check with proper typing
+  const isBusinessAdmin = user?.roles?.some((role: string | Role) => {
+    if (typeof role === 'string') {
+      return role.toLowerCase() === 'business';
+    }
+    return (role.name || '').toLowerCase() === 'business';
+  });
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -186,7 +200,7 @@ export default function MarketplacePage() {
             <h1 className="text-2xl font-semibold text-gray-900">
               Marketplace
             </h1>
-            {user?.roles?.includes("business") && (
+            {isBusinessAdmin && (  // Use the new check
               <Button onClick={() => setIsModalOpen(true)}>
                 <PlusCircle className="h-4 w-4 mr-2" />
                 Add Product
@@ -246,7 +260,7 @@ export default function MarketplacePage() {
                     height={200}
                     className="w-full h-48 object-cover rounded-t-lg"
                     onError={(e: any) => {
-                      e.target.src = "/images/placeholder.jpg" // Updated fallback image path
+                      e.target.src = "/images/placeholder.png" // Updated fallback image path
                     }}
                     unoptimized={product.imageUrl.startsWith('http')} // Only use unoptimized for external URLs
                   />

@@ -88,24 +88,18 @@ export default function NavBar() {
             {dropdownOpen && (
               <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
                 <div className="py-1" role="menu">
-                  <a
-                    href="/profile/change-username"
+                  <Link
+                    href="/profile"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
-                    Change Username
-                  </a>
-                  <a
-                    href="/profile/change-email"
+                    Profile Settings
+                  </Link>
+                  <Link
+                    href="/orders"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
-                    Change Email
-                  </a>
-                  <a
-                    href="/profile/change-password"
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Change Password
-                  </a>
+                    My Orders
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
